@@ -1,7 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List
-
-from scipy.sparse import csr_array  # type: ignore
+from typing import Any, Dict, List
 
 
 class BaseSparseEmbedding(ABC):
@@ -46,7 +44,7 @@ class BM25SparseEmbedding(BaseSparseEmbedding):
         sparse_arrays = self.bm25_ef.encode_documents(texts)
         return [self._sparse_to_dict(sparse_array) for sparse_array in sparse_arrays]
 
-    def _sparse_to_dict(self, sparse_array: csr_array) -> Dict[int, float]:
+    def _sparse_to_dict(self, sparse_array: Any) -> Dict[int, float]:
         row_indices, col_indices = sparse_array.nonzero()
         non_zero_values = sparse_array.data
         result_dict = {}
