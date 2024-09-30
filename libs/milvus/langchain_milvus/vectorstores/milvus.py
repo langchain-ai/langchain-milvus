@@ -258,6 +258,7 @@ class Milvus(VectorStore):
         replica_number: int = 1,
         timeout: Optional[float] = None,
         num_shards: Optional[int] = None,
+        vector_schema: Optional[dict[str, Any]] = None,
         metadata_schema: Optional[dict[str, Any]] = None,
     ):
         """Initialize the Milvus vector store."""
@@ -271,6 +272,7 @@ class Milvus(VectorStore):
 
         # Default search params when one is not provided.
         self.default_search_params = {
+            "FLAT": {"metric_type": "L2", "params": {}},
             "IVF_FLAT": {"metric_type": "L2", "params": {"nprobe": 10}},
             "IVF_SQ8": {"metric_type": "L2", "params": {"nprobe": 10}},
             "IVF_PQ": {"metric_type": "L2", "params": {"nprobe": 10}},
@@ -335,6 +337,7 @@ class Milvus(VectorStore):
         self.timeout = timeout
         self.num_shards = num_shards
         self.metadata_schema = metadata_schema
+        self.vector_schema = vector_schema
 
         # Create the connection to the server
         if connection_args is None:
@@ -456,12 +459,9 @@ class Milvus(VectorStore):
                         and key in self.metadata_schema  # type: ignore
                         and "dtype" in self.metadata_schema[key]  # type: ignore
                     ):
-                        kwargs = self.metadata_schema[key].get("kwargs", {})  # type: ignore
                         fields.append(
-                            FieldSchema(
-                                name=key,
-                                dtype=self.metadata_schema[key]["dtype"],  # type: ignore
-                                **kwargs,
+                            self._get_field_schema_from_dict(
+                                key, self.metadata_schema[key]
                             )
                         )
                     else:
@@ -515,15 +515,23 @@ class Milvus(VectorStore):
                     max_length=65_535,
                 )
             )
-        # Create the vector field, supports binary or float vectors
-        if self._is_sparse_embedding:
-            fields.append(FieldSchema(self._vector_field, DataType.SPARSE_FLOAT_VECTOR))
-        else:
+        # Create the vector field
+        if self.vector_schema and "dtype" in self.vector_schema:
             fields.append(
-                FieldSchema(
-                    self._vector_field, infer_dtype_bydata(embeddings[0]), dim=dim
-                )
+                self._get_field_schema_from_dict(self._vector_field, self.vector_schema)
             )
+        else:
+            if self._is_sparse_embedding:
+                fields.append(
+                    FieldSchema(self._vector_field, DataType.SPARSE_FLOAT_VECTOR)
+                )
+            else:
+                # Supports binary or float vectors
+                fields.append(
+                    FieldSchema(
+                        self._vector_field, infer_dtype_bydata(embeddings[0]), dim=dim
+                    )
+                )
 
         # Create the schema for the collection
         schema = CollectionSchema(
@@ -560,6 +568,18 @@ class Milvus(VectorStore):
                 "Failed to create collection: %s error: %s", self.collection_name, e
             )
             raise e
+
+    def _get_field_schema_from_dict(self, field_name: str, schema_dict: dict):  # type: ignore[no-untyped-def]
+        from pymilvus import FieldSchema
+
+        assert "dtype" in schema_dict, (
+            f"Please provide `dtype` in the schema dict. "
+            f"Existing keys are: {schema_dict.keys()}"
+        )
+        dtype = schema_dict.pop("dtype")
+        kwargs = schema_dict.pop("kwargs", {})
+        kwargs.update(schema_dict)
+        return FieldSchema(name=field_name, dtype=dtype, **kwargs)
 
     def _extract_fields(self) -> None:
         """Grab the existing fields from the Collection"""

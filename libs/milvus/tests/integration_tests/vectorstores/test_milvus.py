@@ -10,6 +10,7 @@ from langchain_milvus.utils.sparse import BM25SparseEmbedding
 from langchain_milvus.vectorstores import Milvus
 from tests.integration_tests.utils import (
     FakeEmbeddings,
+    FakeFp16Embeddings,
     assert_docs_equal_without_pk,
     fake_texts,
 )
@@ -356,6 +357,7 @@ def test_milvus_sparse_embeddings() -> None:
             texts=texts,
             connection_args={"uri": temp_db.name},
             drop_old=True,
+            consistency_level="Strong",
         )
 
         output = docsearch.similarity_search("Pilgrim", k=1)
@@ -377,10 +379,11 @@ def test_milvus_array_field(temp_milvus_db: Any) -> None:
     docsearch = _milvus_from_texts(
         metadatas=metadatas,
         metadata_schema={
-            "array_field": {
-                "dtype": DataType.ARRAY,
-                "kwargs": {"element_type": DataType.INT64, "max_capacity": 50},
-            },
+            "array_field": dict(
+                dtype=DataType.ARRAY,
+                element_type=DataType.INT64,
+                max_capacity=50,
+            ),
             # "id": {
             #     "dtype": DataType.INT64,
             # }
@@ -409,6 +412,35 @@ def test_milvus_array_field(temp_milvus_db: Any) -> None:
     assert len(output) == 2
 
 
+def test_milvus_vector_field(temp_milvus_db: Any) -> None:
+    # Support custom vector field schema, e.g. supporting Float16 and BFloat
+    # https://milvus.io/docs/release_notes.md#Float16-and-BFloat--Vector-DataType
+    from pymilvus import DataType
+
+    texts = ["foo", "bar", "baz"]
+
+    with tempfile.NamedTemporaryFile(suffix=".db") as temp_db:
+        docsearch = Milvus.from_texts(
+            embedding=FakeFp16Embeddings(),
+            texts=texts,
+            connection_args={"uri": temp_db.name},
+            vector_schema=dict(
+                dtype=DataType.FLOAT16_VECTOR,
+                dim=10,
+                # or kwargs={"dim": 10},
+            ),
+            index_params={
+                "metric_type": "L2",
+                "index_type": "FLAT",  # For milvus lite, only support FLAT for fp16
+            },
+            drop_old=True,
+            consistency_level="Strong",
+        )
+
+        output = docsearch.similarity_search("foo", k=1)
+    assert_docs_equal_without_pk(output, [Document(page_content="foo")])
+
+
 # if __name__ == "__main__":
 #     test_milvus()
 #     test_milvus_vector_search()
@@ -428,3 +460,4 @@ def test_milvus_array_field(temp_milvus_db: Any) -> None:
 #     test_milvus_enable_dynamic_field_with_partition_key()
 #     test_milvus_sparse_embeddings()
 #     test_milvus_array_field()
+#     test_milvus_vector_field()
