@@ -1,5 +1,6 @@
 from typing import List
 
+import numpy as np
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 
@@ -25,6 +26,35 @@ class FakeEmbeddings(Embeddings):
         return [float(1.0)] * 9 + [float(0.0)]
 
     async def aembed_query(self, text: str) -> List[float]:
+        return self.embed_query(text)
+
+
+class FakeFp16Embeddings(Embeddings):
+    """Fake fp16 precision embeddings functionality for testing."""
+
+    def embed_documents(self, texts: List[str]) -> List:  # type: ignore[no-untyped-def]
+        """Return simple embeddings with fp16 precision.
+        Embeddings encode each text as its index."""
+        fp16_vectors = []
+        for i in range(len(texts)):
+            raw_vector = [(1 / 9) * d for d in range(9)] + [float(i)]
+            fp16_vector = np.array(raw_vector, dtype=np.float16)
+            fp16_vectors.append(fp16_vector)
+        return fp16_vectors
+
+    async def aembed_documents(self, texts: List[str]) -> List:  # type: ignore[no-untyped-def]
+        return self.embed_documents(texts)
+
+    def embed_query(self, text: str):  # type: ignore[no-untyped-def]
+        """Return constant query embeddings.
+        Embeddings are identical to embed_documents(texts)[0].
+        Distance to each text will be that text's index,
+        as it was passed to embed_documents."""
+        return np.array(
+            [(1 / 9) * d for d in range(9)] + [float(0.0)], dtype=np.float16
+        )
+
+    async def aembed_query(self, text: str):  # type: ignore[no-untyped-def]
         return self.embed_query(text)
 
 
