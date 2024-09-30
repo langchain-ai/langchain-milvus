@@ -1166,13 +1166,14 @@ class Milvus(VectorStore):
         embedding: Union[Embeddings, BaseSparseEmbedding],  # type: ignore
         metadatas: Optional[List[dict]] = None,
         collection_name: str = "LangChainCollection",
-        connection_args: dict[str, Any] = DEFAULT_MILVUS_CONNECTION,
+        connection_args: Optional[Dict[str, Any]] = None,
         consistency_level: str = "Session",
         index_params: Optional[dict] = None,
         search_params: Optional[dict] = None,
         drop_old: bool = False,
         *,
         ids: Optional[List[str]] = None,
+        auto_id: bool = False,
         **kwargs: Any,
     ) -> Milvus:
         """Create a Milvus collection, indexes it with HNSW, and insert data.
@@ -1195,11 +1196,18 @@ class Milvus(VectorStore):
             drop_old (Optional[bool], optional): Whether to drop the collection with
                 that name if it exists. Defaults to False.
             ids (Optional[List[str]]): List of text ids. Defaults to None.
+            auto_id (bool): Whether to enable auto id for primary key. Defaults to
+                False. If False, you need to provide text ids (string less than 65535
+                bytes). If True, Milvus will generate unique integers as primary keys.
 
         Returns:
             Milvus: Milvus Vector Store
         """
         if isinstance(ids, list) and len(ids) > 0:
+            if auto_id:
+                logger.warning(
+                    "Both ids and auto_id are provided. " "Ignore auto_id and use ids."
+                )
             auto_id = False
         else:
             auto_id = True
