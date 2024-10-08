@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from typing import (
     Any,
+    Callable,
     Dict,
     Iterable,
     List,
@@ -277,6 +278,7 @@ class Milvus(VectorStore):
         num_shards: Optional[int] = None,
         vector_schema: Optional[Union[dict[str, Any], List[dict[str, Any]]]] = None,
         metadata_schema: Optional[dict[str, Any]] = None,
+        relevance_score_fn: Optional[Callable[[float], float]] = None,
     ):
         """Initialize the Milvus vector store."""
         try:
@@ -372,6 +374,7 @@ class Milvus(VectorStore):
         self.num_shards = num_shards
         self.metadata_schema = metadata_schema
         self.vector_schema = vector_schema
+        self.override_relevance_score_fn = relevance_score_fn
 
         # Create the connection to the server
         if connection_args is None:
@@ -773,6 +776,30 @@ class Milvus(VectorStore):
                 partition_names=partition_names,
                 replica_number=replica_number,
                 timeout=timeout,
+            )
+
+    def _select_relevance_score_fn(self) -> Callable[[float], float]:
+        """
+        The 'correct' relevance function
+        may differ depending on a few things, including:
+        - the distance / similarity metric used by the VectorStore
+        - the scale of your embeddings (OpenAI's are unit normed. Many others are not!)
+        - embedding dimensionality
+        - etc.
+        """
+        if self.override_relevance_score_fn is not None:
+            return self.override_relevance_score_fn
+
+        metric_type = self.search_params["metric_type"]
+        if metric_type == "L2":
+            return self._euclidean_relevance_score_fn
+        elif metric_type == "IP":
+            return self._max_inner_product_relevance_score_fn
+        else:
+            raise ValueError(
+                "No supported normalization function"
+                f" for metric type: {metric_type}."
+                "Consider providing relevance_score_fn to Milvus constructor."
             )
 
     def add_texts(
