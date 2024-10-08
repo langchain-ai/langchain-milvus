@@ -92,7 +92,7 @@ class Zilliz(Milvus):
             for i, embeddings_func in enumerate(embeddings_functions):
                 if not self._get_index(vector_fields[i]):
                     try:
-                        # If no index params, use a default HNSW based one
+                        # If no index params, use a default *AutoIndex* based one
                         if not indexes_params[i]:
                             if self._is_sparse_embedding(embeddings_func):
                                 indexes_params[i] = {
@@ -114,9 +114,9 @@ class Zilliz(Milvus):
                                 using=self.alias,
                             )
 
-                        # If default did not work, most likely on Zilliz Cloud
+                        # If default did not work, most likely Milvus self-hosted
                         except MilvusException:
-                            # Use AUTOINDEX based index
+                            # Use HNSW based index
                             index_params = {
                                 "metric_type": "L2",
                                 "index_type": "HNSW",
