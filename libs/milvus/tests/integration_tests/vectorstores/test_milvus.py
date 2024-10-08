@@ -442,7 +442,7 @@ def test_milvus_vector_field(temp_milvus_db: Any) -> None:
     assert_docs_equal_without_pk(output, [Document(page_content="foo")])
 
 
-def test_milvus_multi_vector_embeddings() -> None:
+def test_milvus_multi_vector_embeddings(temp_milvus_db: Any) -> None:
     sparse_embedding_func = BM25SparseEmbedding(corpus=fake_texts)
     dense_embedding_func_1 = FakeEmbeddings()
     dense_embeddings_func_2 = FakeEmbeddings()
@@ -453,14 +453,14 @@ def test_milvus_multi_vector_embeddings() -> None:
             dense_embeddings_func_2,
         ],
         texts=fake_texts,
-        connection_args={"uri": "./milvus_demo.db"},
+        connection_args={"uri": temp_milvus_db},
         drop_old=True,
     )
     output = docsearch.similarity_search(query=fake_texts[0], k=1)
     assert_docs_equal_without_pk(output, [Document(page_content=fake_texts[0])])
 
 
-def test_milvus_multi_vector_with_index_params() -> None:
+def test_milvus_multi_vector_with_index_params(temp_milvus_db: Any) -> None:
     """Test setting index params which are different from the defaults."""
     index_param_1 = {
         "metric_type": "COSINE",
@@ -476,7 +476,7 @@ def test_milvus_multi_vector_with_index_params() -> None:
         embedding=[FakeEmbeddings(), FakeEmbeddings()],
         index_params=[index_param_1, index_param_2],
         vector_field=["vec_field_1", "vec_field_2"],
-        connection_args={"uri": "./milvus_demo.db"},
+        connection_args={"uri": temp_milvus_db},
         drop_old=True,
     )
 
@@ -497,7 +497,7 @@ def test_milvus_multi_vector_with_index_params() -> None:
     assert docsearch.search_params[1]["metric_type"] == "IP"
 
 
-def test_milvus_multi_vector_search_with_ranker() -> None:
+def test_milvus_multi_vector_search_with_ranker(temp_milvus_db: Any) -> None:
     """Test hybrid search with specified ranker"""
 
     index_param_1 = {
@@ -520,7 +520,7 @@ def test_milvus_multi_vector_search_with_ranker() -> None:
         embedding=[embedding_1, embedding_2],
         texts=fake_texts,
         index_params=[index_param_1, index_param_2],
-        connection_args={"uri": "./milvus_demo.db"},
+        connection_args={"uri": temp_milvus_db},
         drop_old=True,
     )
 
