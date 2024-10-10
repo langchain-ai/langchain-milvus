@@ -813,67 +813,6 @@ class Milvus(VectorStore):
             List[str]: The resulting keys for each inserted element.
         """
         texts = list(texts)
-
-        try:
-            embeddings: list = self.embedding_func.embed_documents(texts)
-        except NotImplementedError:
-            embeddings = [self.embedding_func.embed_query(x) for x in texts]
-
-        if len(embeddings) == 0:
-            logger.debug("Nothing to insert, skipping.")
-            return []
-
-        return self.add_embeddings(
-            text_embeddings=zip(texts, embeddings),
-            metadatas=metadatas,
-            timeout=timeout,
-            batch_size=batch_size,
-            ids=ids,
-            **kwargs,
-        )
-
-    def add_embeddings(
-        self,
-        text_embeddings: Iterable[Tuple[str, List[float]]],
-        metadatas: Optional[List[dict]] = None,
-        timeout: Optional[float] = None,
-        batch_size: int = 1000,
-        *,
-        ids: Optional[List[str]] = None,
-        **kwargs: Any,
-    ) -> List[str]:
-        """Insert text data with embeddings vectors into Milvus.
-
-        Inserting data when the collection has not be made yet will result
-        in creating a new Collection. The data of the first entity decides
-        the schema of the new collection, the dim is extracted from the first
-        embedding and the columns are decided by the first metadata dict.
-        Metadata keys will need to be present for all inserted values. At
-        the moment there is no None equivalent in Milvus.
-
-        Args:
-            text_embeddings (Iterable[Tuple[str, List[float]]]): The texts with
-                embeddings vectors, it is assumed that they all fit in memory.
-            metadatas (Optional[List[dict]]): Metadata dicts attached to each of
-                the texts. Defaults to None.
-            should be less than 65535 bytes. Required and work when auto_id is False.
-            timeout (Optional[float]): Timeout for each batch insert. Defaults
-                to None.
-            batch_size (int, optional): Batch size to use for insertion.
-                Defaults to 1000.
-            ids (Optional[List[str]]): List of text ids. The length of each item
-
-        Raises:
-            MilvusException: Failure to add texts and embeddings
-
-        Returns:
-            List[str]: The resulting keys for each inserted element.
-        """
-
-        from pymilvus import Collection, MilvusException
-
-        texts, embeddings = zip(*text_embeddings)
-
         if not self.auto_id:
             assert isinstance(ids, list), (
                 "A list of valid ids are required when auto_id is False. "
@@ -914,20 +853,9 @@ class Milvus(VectorStore):
             logger.debug("Nothing to insert, skipping.")
             return []
 
-        transposed_embeddings = [
-            [embeddings[j][i] for j in range(len(embeddings))]
-            for i in range(len(embeddings[0]))
-        ]
-        # Now:
-        # transposed_embeddings = [
-        #     [f1(a), f2(a)],
-        #     [f1(b), f2(b)],
-        #     [f1(c), f2(c)]
-        # ]
-
         return self.add_embeddings(
             texts=texts,
-            embeddings=transposed_embeddings,
+            embeddings=embeddings,
             metadatas=metadatas,
             timeout=timeout,
             batch_size=batch_size,
@@ -938,7 +866,7 @@ class Milvus(VectorStore):
     def add_embeddings(
         self,
         texts: List[str],
-        embeddings: Union[List[List[float]], List[List[List[float]]]],
+        embeddings: List[List[Union[float, List[float]]]],
         metadatas: Optional[List[dict]] = None,
         timeout: Optional[float] = None,
         batch_size: int = 1000,
@@ -956,15 +884,10 @@ class Milvus(VectorStore):
         the moment there is no None equivalent in Milvus.
 
         Args:
-            text (List[str]): the texts to insert
-            embeddings (Union[List[List[float]], List[List[List[float]]]]):
+            texts (List[str]): the texts to insert
+            embeddings (List[List[Union[float, List[float]]]]):
                 A vector embeddings for each text (in case of a single vector)
                 or list of vectors for each text (in case of multi-vector)
-            text_embeddings (
-                Iterable[Tuple[str, Union[List[float], List[List[float]]]]]
-            ):
-                The texts with embeddings vectors,
-                it is assumed that they all fit in memory.
             metadatas (Optional[List[dict]]): Metadata dicts attached to each of
                 the texts. Defaults to None.
             should be less than 65535 bytes. Required and work when auto_id is False.
@@ -982,10 +905,21 @@ class Milvus(VectorStore):
         """
         from pymilvus import Collection, MilvusException
 
-        # Transpose embeddings to make it a list of embeddings of each type.
-        embeddings = [
+        transposed_embeddings = [
             [embeddings[j][i] for j in range(len(embeddings))]
             for i in range(len(embeddings[0]))
+        ]
+        # Now:
+        # transposed_embeddings = [
+        #     [f1(a), f2(a)],
+        #     [f1(b), f2(b)],
+        #     [f1(c), f2(c)]
+        # ]
+
+        # Transpose embeddings to make it a list of embeddings of each type.
+        embeddings = [
+            [transposed_embeddings[j][i] for j in range(len(transposed_embeddings))]
+            for i in range(len(transposed_embeddings[0]))
         ]
 
         vector_fields: List[str] = self._as_list(self._vector_field)
