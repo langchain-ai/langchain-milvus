@@ -876,12 +876,12 @@ class Milvus(VectorStore):
     ) -> List[str]:
         """Insert text data with embeddings vectors into Milvus.
 
-        Inserting data when the collection has not be made yet will result
-        in creating a new Collection. The data of the first entity decides
-        the schema of the new collection, the dim is extracted from the first
-        embedding and the columns are decided by the first metadata dict.
-        Metadata keys will need to be present for all inserted values. At
-        the moment there is no None equivalent in Milvus.
+        This method inserts a batch of text embeddings into a Milvus collection.
+        If the collection is not initialized, it will automatically initialize
+        the collection based on the embeddings,metadatas, and other parameters.
+        The embeddings are expected to be pre-generated using compatible embedding
+        functions, and the metadata associated with each text is optional but
+        must match the number of texts.
 
         Args:
             texts (List[str]): the texts to insert
@@ -904,23 +904,6 @@ class Milvus(VectorStore):
             List[str]: The resulting keys for each inserted element.
         """
         from pymilvus import Collection, MilvusException
-
-        transposed_embeddings = [
-            [embeddings[j][i] for j in range(len(embeddings))]
-            for i in range(len(embeddings[0]))
-        ]
-        # Now:
-        # transposed_embeddings = [
-        #     [f1(a), f2(a)],
-        #     [f1(b), f2(b)],
-        #     [f1(c), f2(c)]
-        # ]
-
-        # Transpose embeddings to make it a list of embeddings of each type.
-        embeddings = [
-            [transposed_embeddings[j][i] for j in range(len(transposed_embeddings))]
-            for i in range(len(transposed_embeddings[0]))
-        ]
 
         vector_fields: List[str] = self._as_list(self._vector_field)
 
