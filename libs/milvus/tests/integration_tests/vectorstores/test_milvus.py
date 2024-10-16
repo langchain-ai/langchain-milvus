@@ -76,7 +76,7 @@ def test_milvus_add_embeddings_search(temp_milvus_db: Any) -> None:
         auto_id=True,
     )
 
-    docsearch.add_embeddings(fake_texts, [embed_func.embed_documents(fake_texts)])  # type: ignore[list-item]
+    docsearch.add_embeddings(fake_texts, embed_func.embed_documents(fake_texts))  # type: ignore[list-item]
     output = docsearch.similarity_search("foo", k=1)
     assert_docs_equal_without_pk(output, [Document(page_content="foo")])
 
