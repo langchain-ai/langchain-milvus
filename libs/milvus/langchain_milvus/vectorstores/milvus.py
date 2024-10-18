@@ -812,8 +812,6 @@ class Milvus(VectorStore):
         Returns:
             List[str]: The resulting keys for each inserted element.
         """
-        from pymilvus import Collection, MilvusException
-
         texts = list(texts)
         if not self.auto_id:
             assert isinstance(ids, list), (
@@ -837,7 +835,6 @@ class Milvus(VectorStore):
                 )
 
         embeddings_functions: List[EmbeddingType] = self._as_list(self.embedding_func)
-        vector_fields: List[str] = self._as_list(self._vector_field)
         embeddings: List = []
 
         for embedding_func in embeddings_functions:
@@ -851,10 +848,94 @@ class Milvus(VectorStore):
         #     [f1(a), f1(b), f1(c)],
         #     [f2(a), f2(b), f2(c)]
         # ]
+        # or
+        # embeddings = [
+        #     [f1(a), f1(b), f1(c)]
+        # ]
 
         if len(embeddings) == 0:
             logger.debug("Nothing to insert, skipping.")
             return []
+
+        if self._is_multi_vector:
+            # transposed_embeddings = [
+            #     [f1(a), f2(a)],
+            #     [f1(b), f2(b)],
+            #     [f1(c), f2(c)]
+            # ]
+            transposed_embeddings = [
+                [embeddings[j][i] for j in range(len(embeddings))]
+                for i in range(len(embeddings[0]))
+            ]
+        else:
+            # transposed_embeddings = [
+            #     f1(a),
+            #     f1(b),
+            #     f1(c)
+            # ]
+            transposed_embeddings = embeddings[0]
+
+        return self.add_embeddings(
+            texts=texts,
+            embeddings=transposed_embeddings,
+            metadatas=metadatas,
+            timeout=timeout,
+            batch_size=batch_size,
+            ids=ids,
+            **kwargs,
+        )
+
+    def add_embeddings(
+        self,
+        texts: List[str],
+        embeddings: List[List[float]] | List[List[List[float]]],
+        metadatas: Optional[List[dict]] = None,
+        timeout: Optional[float] = None,
+        batch_size: int = 1000,
+        *,
+        ids: Optional[List[str]] = None,
+        **kwargs: Any,
+    ) -> List[str]:
+        """Insert text data with embeddings vectors into Milvus.
+
+        This method inserts a batch of text embeddings into a Milvus collection.
+        If the collection is not initialized, it will automatically initialize
+        the collection based on the embeddings,metadatas, and other parameters.
+        The embeddings are expected to be pre-generated using compatible embedding
+        functions, and the metadata associated with each text is optional but
+        must match the number of texts.
+
+        Args:
+            texts (List[str]): the texts to insert
+            embeddings (List[List[Union[float, List[float]]]]):
+                A vector embeddings for each text (in case of a single vector)
+                or list of vectors for each text (in case of multi-vector)
+            metadatas (Optional[List[dict]]): Metadata dicts attached to each of
+                the texts. Defaults to None.
+            should be less than 65535 bytes. Required and work when auto_id is False.
+            timeout (Optional[float]): Timeout for each batch insert. Defaults
+                to None.
+            batch_size (int, optional): Batch size to use for insertion.
+                Defaults to 1000.
+            ids (Optional[List[str]]): List of text ids. The length of each item
+
+        Raises:
+            MilvusException: Failure to add texts and embeddings
+
+        Returns:
+            List[str]: The resulting keys for each inserted element.
+        """
+        from pymilvus import Collection, MilvusException
+
+        if not self._is_multi_vector:
+            embeddings = [[embedding] for embedding in embeddings]  # type: ignore
+        # Transpose embeddings to make it a list of embeddings of each type.
+        embeddings = [  # type: ignore
+            [embeddings[j][i] for j in range(len(embeddings))]
+            for i in range(len(embeddings[0]))
+        ]
+
+        vector_fields: List[str] = self._as_list(self._vector_field)
 
         # If the collection hasn't been initialized yet, perform all steps to do so
         if not isinstance(self.col, Collection):
@@ -887,7 +968,7 @@ class Milvus(VectorStore):
 
             entity_dict[self._text_field] = text
 
-            for vector_field, vector_field_embeddings in zip(vector_fields, embeddings):
+            for vector_field, vector_field_embeddings in zip(vector_fields, embeddings):  # type: ignore
                 entity_dict[vector_field] = vector_field_embeddings[i]
 
             if self._metadata_field and not self.enable_dynamic_field:
