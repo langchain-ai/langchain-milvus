@@ -419,10 +419,12 @@ class Milvus(VectorStore):
 
     @property
     def _is_sparse(self) -> bool:
-        indexes_params = self._as_list(self.index_params)  # type: ignore[arg-type]
+        if self.index_params is None:
+            return False
+        indexes_params = self._as_list(self.index_params)
         if len(indexes_params) > 1:
             return False
-        index_type = indexes_params[0]["index_type"]  # type: ignore[index]
+        index_type = indexes_params[0]["index_type"]
         if "SPARSE" in index_type:
             return True
         return False
@@ -1394,6 +1396,8 @@ class Milvus(VectorStore):
         - etc.
 
         """
+        if self.index_params is None:
+            raise ValueError("No index params provided.")
         if self._is_multi_vector:
             raise ValueError("No supported normalization function for multi vectors.")
         if self._is_sparse:
@@ -1419,8 +1423,8 @@ class Milvus(VectorStore):
             """
             return (ip_score + 1) / 2.0
 
-        indexes_params = self._as_list(self.index_params)  # type: ignore[arg-type]
-        metric_type = indexes_params[0]["metric_type"]  # type: ignore[index]
+        indexes_params = self._as_list(self.index_params)
+        metric_type = indexes_params[0]["metric_type"]
         if metric_type == "L2":
             return _map_l2_to_similarity
         elif metric_type in ["IP", "COSINE"]:
