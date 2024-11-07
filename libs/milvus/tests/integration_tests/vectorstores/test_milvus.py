@@ -9,6 +9,7 @@ from langchain_core.documents import Document
 from langchain_milvus.utils.sparse import BM25SparseEmbedding
 from langchain_milvus.vectorstores import Milvus
 from tests.integration_tests.utils import (
+    DirectionEmbeddings,
     FakeEmbeddings,
     FakeFp16Embeddings,
     FixedValuesEmbeddings,
@@ -560,6 +561,46 @@ def test_milvus_multi_vector_search_with_ranker(temp_milvus_db: Any) -> None:
     assert_docs_equal_without_pk(output, [Document(page_content=fake_texts[-1])])
 
 
+@pytest.mark.parametrize("metric_type", ["L2", "IP", "COSINE"])
+@pytest.mark.parametrize("score_threshold", [0.5001, 0.4999])
+def test_milvus_similarity_search_with_relevance_scores(
+    temp_milvus_db: Any, metric_type: str, score_threshold: float
+) -> None:
+    """Test similarity search with relevance scores"""
+    docsearch = Milvus(
+        embedding_function=DirectionEmbeddings(),
+        connection_args={
+            "uri": temp_milvus_db,
+        },
+        auto_id=True,
+        drop_old=True,
+        consistency_level="Strong",
+        index_params={
+            "metric_type": metric_type,
+            "index_type": "FLAT",
+            "params": {},
+        },
+    )
+    docsearch.add_texts(["left", "right", "up", "down"])
+    output = docsearch.similarity_search_with_score("down", k=4)
+    assert output[0][0].page_content == "down"
+    assert output[-1][0].page_content == "up"
+    retriever = docsearch.as_retriever(
+        search_type="similarity_score_threshold",
+        search_kwargs={
+            "score_threshold": score_threshold,
+            "k": 4,
+        },
+    )
+    retrival_output = retriever.invoke("down")
+    if score_threshold == 0.5001:
+        assert len(retrival_output) == 1
+        assert retrival_output[0].page_content == "down"
+    elif score_threshold == 0.4999:
+        assert len(retrival_output) == 3
+        assert retrival_output[0].page_content == "down"
+
+
 # if __name__ == "__main__":
 #     test_milvus()
 #     test_milvus_vector_search()
@@ -583,3 +624,4 @@ def test_milvus_multi_vector_search_with_ranker(temp_milvus_db: Any) -> None:
 #     test_milvus_multi_vector_embeddings()
 #     test_milvus_multi_vector_with_index_params()
 #     test_milvus_multi_vector_search_with_ranker()
+#     test_milvus_similarity_search_with_relevance_scores()

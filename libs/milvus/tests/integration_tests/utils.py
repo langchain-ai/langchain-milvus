@@ -72,6 +72,26 @@ class FixedValuesEmbeddings(Embeddings):
         return [float(self.query_val)] * 10
 
 
+class DirectionEmbeddings(Embeddings):
+    """Fake embeddings class with 2 dimention orthogonal basis vectors for testing."""
+
+    def _get_embedding(self, text: str) -> list[float]:
+        if text.lower() == "left":
+            return [-1, 0]
+        elif text.lower() == "right":
+            return [1, 0]
+        elif text.lower() == "up":
+            return [0, 1]
+        else:
+            return [0, -1]
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        return [self._get_embedding(text) for text in texts]
+
+    def embed_query(self, text: str) -> list[float]:
+        return self._get_embedding(text)
+
+
 def assert_docs_equal_without_pk(
     docs1: List[Document], docs2: List[Document], pk_field: str = "pk"
 ) -> None:
