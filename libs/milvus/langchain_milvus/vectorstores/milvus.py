@@ -19,7 +19,7 @@ import numpy as np
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
-from pymilvus import RRFRanker, WeightedRanker
+from pymilvus import MilvusClient, RRFRanker, WeightedRanker
 
 from langchain_milvus import MilvusCollectionHybridSearchRetriever
 from langchain_milvus.utils.sparse import BaseSparseEmbedding
@@ -409,7 +409,7 @@ class Milvus(VectorStore):
         return self.embedding_func
 
     @property
-    def client(self) -> Any:
+    def client(self) -> MilvusClient:
         """Get client."""
         return self._milvus_client
 
@@ -419,15 +419,11 @@ class Milvus(VectorStore):
 
     @property
     def _is_sparse(self) -> bool:
-        if self.index_params is None:
-            return False
-        indexes_params = self._as_list(self.index_params)
-        if len(indexes_params) > 1:
-            return False
-        index_type = indexes_params[0]["index_type"]
-        if "SPARSE" in index_type:
+        embedding_func: List[EmbeddingType] = self._as_list(self.embedding_func)
+        if self._is_sparse_embedding(embedding_func[0]):
             return True
-        return False
+        else:
+            return False
 
     @staticmethod
     def _is_sparse_embedding(embeddings_function: EmbeddingType) -> bool:
@@ -1396,12 +1392,20 @@ class Milvus(VectorStore):
         - etc.
 
         """
-        if self.index_params is None:
-            raise ValueError("No index params provided.")
+        if not self.col or not self.col.indexes:
+            raise ValueError(
+                "No index params provided. Could not determine relevance function."
+            )
         if self._is_multi_vector:
-            raise ValueError("No supported normalization function for multi vectors.")
+            raise ValueError(
+                "No supported normalization function for multi vectors. "
+                "Could not determine relevance function."
+            )
         if self._is_sparse:
-            raise ValueError("No supported normalization function for sparse indexes.")
+            raise ValueError(
+                "No supported normalization function for sparse indexes. "
+                "Could not determine relevance function."
+            )
 
         def _map_l2_to_similarity(l2_distance: float) -> float:
             """Return a similarity score on a scale [0, 1].
@@ -1423,6 +1427,12 @@ class Milvus(VectorStore):
             """
             return (ip_score + 1) / 2.0
 
+        if self.index_params is None:
+            logger.warning(
+                "No index params provided. Could not determine relevance function. "
+                "Use L2 distance as default."
+            )
+            return _map_l2_to_similarity
         indexes_params = self._as_list(self.index_params)
         metric_type = indexes_params[0]["metric_type"]
         if metric_type == "L2":
