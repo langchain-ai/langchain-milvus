@@ -19,7 +19,19 @@ import numpy as np
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
-from pymilvus import MilvusClient, RRFRanker, WeightedRanker
+from pymilvus import (
+    Collection,
+    CollectionSchema,
+    DataType,
+    FieldSchema,
+    MilvusClient,
+    MilvusException,
+    RRFRanker,
+    WeightedRanker,
+    utility,
+)
+from pymilvus.client.types import LoadState  # type: ignore
+from pymilvus.orm.types import infer_dtype_bydata  # type: ignore
 
 from langchain_milvus import MilvusCollectionHybridSearchRetriever
 from langchain_milvus.utils.sparse import BaseSparseEmbedding
@@ -280,14 +292,6 @@ class Milvus(VectorStore):
         metadata_schema: Optional[dict[str, Any]] = None,
     ):
         """Initialize the Milvus vector store."""
-        try:
-            from pymilvus import Collection, MilvusClient, utility
-        except ImportError:
-            raise ValueError(
-                "Could not import pymilvus python package. "
-                "Please install it with `pip install pymilvus`."
-            )
-
         # Default search params when one is not provided.
         self.default_search_params = {
             "FLAT": {"metric_type": "L2", "params": {}},
@@ -451,15 +455,6 @@ class Milvus(VectorStore):
     def _create_collection(
         self, embeddings: List[list], metadatas: Optional[list[dict]] = None
     ) -> None:
-        from pymilvus import (
-            Collection,
-            CollectionSchema,
-            DataType,
-            FieldSchema,
-            MilvusException,
-        )
-        from pymilvus.orm.types import infer_dtype_bydata  # type: ignore
-
         fields = []
         vector_fields: List[str] = self._as_list(self._vector_field)
         # If enable_dynamic_field, we don't need to create fields, and just pass it.
@@ -632,8 +627,6 @@ class Milvus(VectorStore):
             raise e
 
     def _get_field_schema_from_dict(self, field_name: str, schema_dict: dict):  # type: ignore[no-untyped-def]
-        from pymilvus import FieldSchema
-
         assert "dtype" in schema_dict, (
             f"Please provide `dtype` in the schema dict. "
             f"Existing keys are: {schema_dict.keys()}"
@@ -645,8 +638,6 @@ class Milvus(VectorStore):
 
     def _extract_fields(self) -> None:
         """Grab the existing fields from the Collection"""
-        from pymilvus import Collection
-
         if isinstance(self.col, Collection):
             schema = self.col.schema
             for x in schema.fields:
@@ -654,8 +645,6 @@ class Milvus(VectorStore):
 
     def _get_index(self, field_name: Optional[str] = None) -> Optional[dict[str, Any]]:
         """Return the vector index information if it exists"""
-        from pymilvus import Collection
-
         if not self._is_multi_vector:
             field_name: str = field_name or self._vector_field  # type: ignore
 
@@ -667,8 +656,6 @@ class Milvus(VectorStore):
 
     def _create_index(self) -> None:
         """Create an index on the collection"""
-        from pymilvus import Collection, MilvusException
-
         if isinstance(self.col, Collection) and self._get_index() is None:
             embeddings_functions: List[EmbeddingType] = self._as_list(
                 self.embedding_func
@@ -740,8 +727,6 @@ class Milvus(VectorStore):
         """Generate search params based on the current index type"""
         import copy
 
-        from pymilvus import Collection
-
         if isinstance(self.col, Collection) and self.search_params is None:
             vector_fields: List[str] = self._as_list(self._vector_field)
             search_params_list: List[dict] = []
@@ -768,9 +753,6 @@ class Milvus(VectorStore):
         timeout: Optional[float] = None,
     ) -> None:
         """Load the collection if available."""
-        from pymilvus import Collection, utility
-        from pymilvus.client.types import LoadState  # type: ignore
-
         timeout = self.timeout or timeout
         if (
             isinstance(self.col, Collection)
@@ -934,7 +916,6 @@ class Milvus(VectorStore):
         Returns:
             List[str]: The resulting keys for each inserted element.
         """
-        from pymilvus import Collection, MilvusException
 
         if not self._is_multi_vector:
             embeddings = [[embedding] for embedding in embeddings]  # type: ignore
@@ -1585,8 +1566,6 @@ class Milvus(VectorStore):
             List[int]: List of IDs (Primary Keys)
         """
 
-        from pymilvus import MilvusException
-
         if self.col is None:
             logger.debug("No existing collection to get pk.")
             return None
@@ -1616,8 +1595,6 @@ class Milvus(VectorStore):
         Returns:
             List[str]: IDs of the added texts.
         """
-
-        from pymilvus import MilvusException
 
         if documents is None or len(documents) == 0:
             logger.debug("No documents to upsert.")
