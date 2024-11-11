@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 from typing import List, Optional, Union, cast
 
+from pymilvus import Collection, MilvusException
+
 from langchain_milvus.vectorstores.milvus import EmbeddingType, Milvus
 
 logger = logging.getLogger(__name__)
@@ -73,7 +75,6 @@ class Zilliz(Milvus):
 
     def _create_index(self) -> None:
         """Create an index on the collection"""
-        from pymilvus import Collection, MilvusException
 
         self.index_params = cast(Optional[Union[dict, List[dict]]], self.index_params)  # type: ignore
 
