@@ -96,9 +96,10 @@ class MilvusCollectionHybridSearchRetriever(BaseRetriever):
             self.text_field in collection_fields
         ), f"{self.text_field} is not a valid field in the collection."
         for field in self.output_fields:  # type: ignore[union-attr]
-            assert (
-                field in collection_fields
-            ), f"{field} is not a valid field in the collection."
+            if not self.collection.schema.enable_dynamic_field:
+                assert (
+                    field in collection_fields
+                ), f"{field} is not a valid field in the collection."
 
     def _get_output_fields(self) -> List[str]:
         if self.output_fields:
