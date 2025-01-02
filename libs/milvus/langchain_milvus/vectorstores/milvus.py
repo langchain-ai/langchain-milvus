@@ -1320,7 +1320,7 @@ class Milvus(VectorStore):
         """
         col_search_res = self._collection_search(
             embedding=embedding,
-            k=fetch_k,
+            k=k,
             param=param,
             expr=expr,
             timeout=timeout,
