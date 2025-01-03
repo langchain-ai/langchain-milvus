@@ -1,11 +1,11 @@
 """Test Milvus functionality."""
-
 import tempfile
 from typing import Any, List, Optional
 
 import pytest
 from langchain_core.documents import Document
 
+from langchain_milvus.function import Bm25BuiltInFunction
 from langchain_milvus.utils.sparse import BM25SparseEmbedding
 from langchain_milvus.vectorstores import Milvus
 from tests.integration_tests.utils import (
@@ -35,11 +35,15 @@ def temp_milvus_db() -> Any:
         yield temp_file.name
 
 
+TEST_URI = "./milvus_demo.db"
+# TEST_TOKEN = ""
+
+
 def _milvus_from_texts(
     metadatas: Optional[List[dict]] = None,
     ids: Optional[List[str]] = None,
     drop: bool = True,
-    db_path: str = "./milvus_demo.db",
+    db_path: str = TEST_URI,
     **kwargs: Any,
 ) -> Milvus:
     return Milvus.from_texts(
@@ -599,6 +603,68 @@ def test_milvus_similarity_search_with_relevance_scores(
     elif score_threshold == 0.4999:
         assert len(retrival_output) == 3
         assert retrival_output[0].page_content == "down"
+
+
+@pytest.mark.parametrize("enable_dynamic_field", [True, False])
+def test_builtin_bm25_function(enable_dynamic_field: bool):
+    """Test builtin BM25 function"""
+
+    def _add_and_assert(docsearch):
+        if enable_dynamic_field:
+            metadatas = [{"page": i} for i in range(len(fake_texts))]
+        else:
+            metadatas = None
+        docsearch.add_texts(fake_texts, metadatas=metadatas)
+        output = docsearch.similarity_search("foo", k=1)
+        if enable_dynamic_field:
+            assert_docs_equal_without_pk(
+                output, [Document(page_content=fake_texts[0], metadata={"page": 0})]
+            )
+        else:
+            assert_docs_equal_without_pk(output, [Document(page_content=fake_texts[0])])
+
+    docsearch1 = Milvus(
+        embedding_function=[],
+        builtin_functions=[Bm25BuiltInFunction()],
+        connection_args={"uri": TEST_URI},
+        auto_id=True,
+        drop_old=True,
+        consistency_level="Strong",
+        vector_field="sparse",
+        enable_dynamic_field=enable_dynamic_field,
+    )
+    _add_and_assert(docsearch1)
+
+    docsearch2 = Milvus(
+        embedding_function=FakeEmbeddings(),
+        builtin_functions=[Bm25BuiltInFunction()],
+        connection_args={"uri": TEST_URI},
+        auto_id=True,
+        drop_old=True,
+        consistency_level="Strong",
+        vector_field="sparse",
+        enable_dynamic_field=enable_dynamic_field,
+    )
+    _add_and_assert(docsearch2)
+
+    docsearch3 = Milvus(
+        embedding_function=[
+            FakeEmbeddings(),
+        ],
+        connection_args={"uri": TEST_URI},
+        auto_id=True,
+        drop_old=True,
+        consistency_level="Strong",
+        vector_field=["dense00", "sparse00"],
+        builtin_functions=[
+            Bm25BuiltInFunction(
+                input_field_names="text",
+                output_field_names="sparse00",
+            )
+        ],
+        enable_dynamic_field=enable_dynamic_field,
+    )
+    _add_and_assert(docsearch3)
 
 
 # if __name__ == "__main__":
