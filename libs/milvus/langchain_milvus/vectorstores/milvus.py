@@ -294,7 +294,7 @@ class Milvus(VectorStore):
         num_shards: Optional[int] = None,
         vector_schema: Optional[Union[dict[str, Any], List[dict[str, Any]]]] = None,
         metadata_schema: Optional[dict[str, Any]] = None,
-        builtin_functions: Optional[
+        builtin_function: Optional[
             Union[BaseMilvusBuiltInFunction, List[BaseMilvusBuiltInFunction]]
         ] = None,
     ):
@@ -335,9 +335,9 @@ class Milvus(VectorStore):
         self.embedding_func: Optional[
             Union[EmbeddingType, List[EmbeddingType]]
         ] = self._from_list(embedding_function)
-        self.builtin_functions: Optional[
+        self.builtin_func: Optional[
             Union[BaseMilvusBuiltInFunction, List[BaseMilvusBuiltInFunction]]
-        ] = self._from_list(builtin_functions)
+        ] = self._from_list(builtin_function)
         self.collection_name = collection_name
         self.collection_description = collection_description
         self.collection_properties = collection_properties
@@ -409,14 +409,14 @@ class Milvus(VectorStore):
     ) -> None:
         """
         Check the validity of vector_field and vector_schema,
-        as well as the relationships with embedding_func and builtin_functions.
+        as well as the relationships with embedding_func and builtin_func.
         """
         assert len(self._as_list(vector_field)) == len(
             set(self._as_list(vector_field))
         ), "Vector field names should be unique."
 
         vector_fields_from_function = []
-        for builtin_function in self._as_list(self.builtin_functions):
+        for builtin_function in self._as_list(self.builtin_func):
             vector_fields_from_function.extend(
                 self._as_list(builtin_function.output_field_names)
             )
@@ -570,16 +570,14 @@ class Milvus(VectorStore):
     @property
     def _is_multi_function(self) -> bool:
         """Whether there are multi builtin functions in this instance."""
-        return (
-            isinstance(self.builtin_functions, list) and len(self.builtin_functions) > 1
-        )
+        return isinstance(self.builtin_func, list) and len(self.builtin_func) > 1
 
     @property
     def _is_embedding_only(self) -> bool:
         """Whether there are only embedding function(s) but no builtin function(s)."""
         return (
             len(self._as_list(self.embedding_func)) > 0  # type: ignore[arg-type]
-            and len(self._as_list(self.builtin_functions)) == 0
+            and len(self._as_list(self.builtin_func)) == 0
         )
 
     @property
@@ -587,7 +585,7 @@ class Milvus(VectorStore):
         """Whether there are only builtin function(s) but no embedding function(s)."""
         return (
             len(self._as_list(self.embedding_func)) == 0  # type: ignore[arg-type]
-            and len(self._as_list(self.builtin_functions)) > 0
+            and len(self._as_list(self.builtin_func)) > 0
         )
 
     @property
@@ -600,7 +598,7 @@ class Milvus(VectorStore):
             ):
                 return True
         if self._is_function_only:
-            builtin_func = self._as_list(self.builtin_functions)
+            builtin_func = self._as_list(self.builtin_func)
             if len(builtin_func) == 1 and isinstance(
                 builtin_func[0], Bm25BuiltInFunction
             ):
@@ -646,7 +644,7 @@ class Milvus(VectorStore):
             description=self.collection_description,
             partition_key_field=self._partition_key_field,
             enable_dynamic_field=self.enable_dynamic_field,
-            functions=[func.function for func in self._as_list(self.builtin_functions)],
+            functions=[func.function for func in self._as_list(self.builtin_func)],
         )
 
         # Create the collection
@@ -742,7 +740,7 @@ class Milvus(VectorStore):
                         # Datatype is a string/varchar equivalent
                         elif dtype == DataType.VARCHAR:
                             kwargs = {}
-                            for function in self._as_list(self.builtin_functions):
+                            for function in self._as_list(self.builtin_func):
                                 if isinstance(function, Bm25BuiltInFunction):
                                     if function.input_field_names == self._text_field:
                                         kwargs = (
@@ -772,7 +770,7 @@ class Milvus(VectorStore):
     def _prepare_text_fields(self) -> List[FieldSchema]:
         fields = []
         kwargs = {}
-        for function in self._as_list(self.builtin_functions):
+        for function in self._as_list(self.builtin_func):
             if isinstance(function, Bm25BuiltInFunction):
                 if self._from_list(function.input_field_names) == self._text_field:
                     kwargs = function.get_input_field_schema_kwargs()
@@ -842,7 +840,7 @@ class Milvus(VectorStore):
                     )
         # Loop through the built-in functions
         for vector_field, builtin_function in zip(
-            self._vector_fields_from_function, self._as_list(self.builtin_functions)
+            self._vector_fields_from_function, self._as_list(self.builtin_func)
         ):
             vector_schema = self._vector_schema_map.get(vector_field, None)
             if vector_schema and "dtype" in vector_schema:
@@ -956,7 +954,7 @@ class Milvus(VectorStore):
                         )
                         raise e
             for vector_field, builtin_function in zip(
-                self._vector_fields_from_function, self._as_list(self.builtin_functions)
+                self._vector_fields_from_function, self._as_list(self.builtin_func)
             ):
                 if not self._get_index(vector_field):
                     try:
@@ -1543,7 +1541,7 @@ class Milvus(VectorStore):
             param = cast(Optional[dict], self._from_list(param))
             if (
                 len(self._as_list(self.embedding_func)) == 1  # type: ignore[arg-type]
-                and len(self._as_list(self.builtin_functions)) == 0
+                and len(self._as_list(self.builtin_func)) == 0
             ):
                 embedding = self._as_list(self.embedding_func)[0].embed_query(query)  # type: ignore
                 col_search_res = self._collection_search(
@@ -1556,7 +1554,7 @@ class Milvus(VectorStore):
                 )
             elif (
                 len(self._as_list(self.embedding_func)) == 0  # type: ignore[arg-type]
-                and len(self._as_list(self.builtin_functions)) == 1
+                and len(self._as_list(self.builtin_func)) == 1
             ):
                 col_search_res = self._collection_search(
                     embedding_or_text=query,
@@ -2050,7 +2048,7 @@ class Milvus(VectorStore):
     def _remove_forbidden_fields(self, fields: List[str]) -> List[str]:
         """Bm25 function fields are not allowed as output fields in Milvus."""
         forbidden_fields = []
-        for builtin_function in self._as_list(self.builtin_functions):
+        for builtin_function in self._as_list(self.builtin_func):
             if builtin_function.type == FunctionType.BM25:
                 forbidden_fields.extend(
                     self._as_list(builtin_function.output_field_names)

@@ -625,7 +625,7 @@ def test_builtin_bm25_function(enable_dynamic_field: bool) -> None:
 
     docsearch1 = Milvus(
         embedding_function=[],
-        builtin_functions=[Bm25BuiltInFunction()],
+        builtin_function=[Bm25BuiltInFunction()],
         connection_args={"uri": TEST_URI},
         auto_id=True,
         drop_old=True,
@@ -637,7 +637,7 @@ def test_builtin_bm25_function(enable_dynamic_field: bool) -> None:
 
     docsearch2 = Milvus(
         embedding_function=FakeEmbeddings(),
-        builtin_functions=[Bm25BuiltInFunction()],
+        builtin_function=[Bm25BuiltInFunction()],
         connection_args={"uri": TEST_URI},
         auto_id=True,
         drop_old=True,
@@ -651,17 +651,17 @@ def test_builtin_bm25_function(enable_dynamic_field: bool) -> None:
         embedding_function=[
             FakeEmbeddings(),
         ],
-        connection_args={"uri": TEST_URI},
-        auto_id=True,
-        drop_old=True,
-        consistency_level="Strong",
-        vector_field=["dense00", "sparse00"],
-        builtin_functions=[
+        builtin_function=[
             Bm25BuiltInFunction(
                 input_field_names="text",
                 output_field_names="sparse00",
             )
         ],
+        connection_args={"uri": TEST_URI},
+        auto_id=True,
+        drop_old=True,
+        consistency_level="Strong",
+        vector_field=["dense00", "sparse00"],
         enable_dynamic_field=enable_dynamic_field,
     )
     _add_and_assert(docsearch3)
