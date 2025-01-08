@@ -606,10 +606,10 @@ def test_milvus_similarity_search_with_relevance_scores(
 
 
 @pytest.mark.parametrize("enable_dynamic_field", [True, False])
-def test_builtin_bm25_function(enable_dynamic_field: bool):
+def test_builtin_bm25_function(enable_dynamic_field: bool) -> None:
     """Test builtin BM25 function"""
 
-    def _add_and_assert(docsearch):
+    def _add_and_assert(docsearch: Milvus) -> None:
         if enable_dynamic_field:
             metadatas = [{"page": i} for i in range(len(fake_texts))]
         else:

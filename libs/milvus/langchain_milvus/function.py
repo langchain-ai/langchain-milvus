@@ -1,4 +1,5 @@
 import uuid
+from abc import ABC
 from typing import Any, Dict, List, Optional, Union
 
 from pymilvus import Function, FunctionType
@@ -6,7 +7,7 @@ from pymilvus import Function, FunctionType
 from langchain_milvus.utils.constant import SPARSE_VECTOR_FIELD, TEXT_FIELD
 
 
-class BaseMilvusBuiltInFunction:
+class BaseMilvusBuiltInFunction(ABC):
     """
     Base class for Milvus built-in functions.
 
