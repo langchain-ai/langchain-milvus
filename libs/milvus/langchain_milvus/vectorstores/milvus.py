@@ -36,7 +36,7 @@ from pymilvus import (
 from pymilvus.client.types import LoadState  # type: ignore
 from pymilvus.orm.types import infer_dtype_bydata  # type: ignore
 
-from langchain_milvus.function import BaseMilvusBuiltInFunction, Bm25BuiltInFunction
+from langchain_milvus.function import BaseMilvusBuiltInFunction, BM25BuiltInFunction
 from langchain_milvus.utils.constant import PRIMARY_FIELD, TEXT_FIELD, VECTOR_FIELD
 from langchain_milvus.utils.sparse import BaseSparseEmbedding
 
@@ -332,6 +332,11 @@ class Milvus(VectorStore):
             "SPARSE_WAND": {"metric_type": "IP", "params": {"drop_ratio_build": 0.2}},
         }
 
+        if not embedding_function and not builtin_function:
+            raise ValueError(
+                "Either `embedding_function` or `builtin_function` should be provided."
+            )
+
         self.embedding_func: Optional[
             Union[EmbeddingType, List[EmbeddingType]]
         ] = self._from_list(embedding_function)
@@ -440,12 +445,13 @@ class Milvus(VectorStore):
             ):
                 appending_fields.append(f"vector_{i + 1}")
             vector_fields_from_embedding.extend(appending_fields)
-            logger.warning(
-                "When multiple embeddings function are used, one should provide"
-                "matching `vector_field` names. "
-                "Using generated vector names %s",
-                appending_fields,
-            )
+            if len(appending_fields) > 0:
+                logger.warning(
+                    "When multiple embeddings function are used, one should provide "
+                    "matching `vector_field` names. "
+                    "Using generated vector names %s",
+                    appending_fields,
+                )
         # Number of customized fields > number of embedding functions
         else:
             raise ValueError(
@@ -558,6 +564,11 @@ class Milvus(VectorStore):
         return self._milvus_client
 
     @property
+    def vector_fields(self) -> List[str]:
+        """Get vector field(s)."""
+        return self._as_list(self._vector_field)
+
+    @property
     def _is_multi_vector(self) -> bool:
         """Whether the sum of embedding functions and builtin functions is multi."""
         return isinstance(self._vector_field, list) and len(self._vector_field) > 1
@@ -600,7 +611,7 @@ class Milvus(VectorStore):
         if self._is_function_only:
             builtin_func = self._as_list(self.builtin_func)
             if len(builtin_func) == 1 and isinstance(
-                builtin_func[0], Bm25BuiltInFunction
+                builtin_func[0], BM25BuiltInFunction
             ):
                 return True
         return False
@@ -741,7 +752,7 @@ class Milvus(VectorStore):
                         elif dtype == DataType.VARCHAR:
                             kwargs = {}
                             for function in self._as_list(self.builtin_func):
-                                if isinstance(function, Bm25BuiltInFunction):
+                                if isinstance(function, BM25BuiltInFunction):
                                     if function.input_field_names == self._text_field:
                                         kwargs = (
                                             function.get_input_field_schema_kwargs()
@@ -771,7 +782,7 @@ class Milvus(VectorStore):
         fields = []
         kwargs = {}
         for function in self._as_list(self.builtin_func):
-            if isinstance(function, Bm25BuiltInFunction):
+            if isinstance(function, BM25BuiltInFunction):
                 if self._from_list(function.input_field_names) == self._text_field:
                     kwargs = function.get_input_field_schema_kwargs()
                     break
@@ -845,7 +856,7 @@ class Milvus(VectorStore):
             vector_schema = self._vector_schema_map.get(vector_field, None)
             if vector_schema and "dtype" in vector_schema:
                 field = self._get_field_schema_from_dict(vector_field, vector_schema)
-            elif isinstance(builtin_function, Bm25BuiltInFunction):
+            elif isinstance(builtin_function, BM25BuiltInFunction):
                 field = FieldSchema(vector_field, DataType.SPARSE_FLOAT_VECTOR)
             else:
                 raise ValueError(
@@ -907,13 +918,13 @@ class Milvus(VectorStore):
             )
 
             # For backward compatibility
-            if isinstance(self, Milvus):
+            if type(self) is Milvus:
                 default_index_params = {
                     "metric_type": "L2",
                     "index_type": "HNSW",
                     "params": {"M": 8, "efConstruction": 64},
                 }
-            else:  # Zilliz
+            else:  # Zilliz, which is subclass of Milvus
                 default_index_params = {
                     "metric_type": "L2",
                     "index_type": "AUTOINDEX",
@@ -1169,7 +1180,7 @@ class Milvus(VectorStore):
 
         Args:
             texts (List[str]): the texts to insert
-            embeddings (List[List[Union[float, List[float]]]]):
+            embeddings (List[List[float]] | List[List[List[float]]]):
                 A vector embeddings for each text (in case of a single vector)
                 or list of vectors for each text (in case of multi-vector)
             metadatas (Optional[List[dict]]): Metadata dicts attached to each of
@@ -1295,8 +1306,8 @@ class Milvus(VectorStore):
         https://milvus.io/api-reference/pymilvus/v2.5.x/ORM/Collection/search.md
 
         Args:
-            embedding_or_text (List[float] | Dict[int, float]): The embedding vector
-            or query text being searched.
+            embedding_or_text (List[float] | Dict[int, float] | str): The embedding
+                vector or query text being searched.
             k (int, optional): The amount of results to return. Defaults to 4.
             param (dict): The search params for the specified index.
                 Defaults to None.
@@ -1434,7 +1445,7 @@ class Milvus(VectorStore):
         self,
         query: str,
         k: int = 4,
-        param: Optional[dict] = None,
+        param: Optional[dict | list[dict]] = None,
         expr: Optional[str] = None,
         timeout: Optional[float] = None,
         **kwargs: Any,
@@ -1444,7 +1455,7 @@ class Milvus(VectorStore):
         Args:
             query (str): The text to search.
             k (int, optional): How many results to return. Defaults to 4.
-            param (dict, optional): The search params for the index type.
+            param (dict | list[dict], optional): The search params for the index type.
                 Defaults to None.
             expr (str, optional): Filtering expression. Defaults to None.
             timeout (int, optional): How long to wait before timeout error.
@@ -1845,7 +1856,7 @@ class Milvus(VectorStore):
     def from_texts(
         cls,
         texts: List[str],
-        embedding: Union[EmbeddingType, List[EmbeddingType]],  # type: ignore
+        embedding: Optional[Union[EmbeddingType, List[EmbeddingType]]],
         metadatas: Optional[List[dict]] = None,
         collection_name: str = "LangChainCollection",
         connection_args: Optional[Dict[str, Any]] = None,
@@ -1856,13 +1867,17 @@ class Milvus(VectorStore):
         *,
         ids: Optional[List[str]] = None,
         auto_id: bool = False,
+        builtin_function: Optional[
+            Union[BaseMilvusBuiltInFunction, List[BaseMilvusBuiltInFunction]]
+        ] = None,
         **kwargs: Any,
     ) -> Milvus:
         """Create a Milvus collection, indexes it with HNSW, and insert data.
 
         Args:
             texts (List[str]): Text data.
-            embedding (Union[Embeddings, BaseSparseEmbedding]): Embedding function.
+            embedding (Optional[Union[Embeddings, BaseSparseEmbedding]]): Embedding
+                function.
             metadatas (Optional[List[dict]]): Metadata for each text if it exists.
                 Defaults to None.
             collection_name (str, optional): Collection name to use. Defaults to
@@ -1881,7 +1896,10 @@ class Milvus(VectorStore):
             auto_id (bool): Whether to enable auto id for primary key. Defaults to
                 False. If False, you need to provide text ids (string less than 65535
                 bytes). If True, Milvus will generate unique integers as primary keys.
-
+            builtin_function (Optional[Union[BaseMilvusBuiltInFunction,
+                List[BaseMilvusBuiltInFunction]]]):
+                Built-in function to use. Defaults to None.
+            **kwargs: Other parameters in Milvus Collection.
         Returns:
             Milvus: Milvus Vector Store
         """
@@ -1903,6 +1921,7 @@ class Milvus(VectorStore):
             search_params=search_params,
             drop_old=drop_old,
             auto_id=auto_id,
+            builtin_function=builtin_function,
             **kwargs,
         )
         vector_db.add_texts(texts=texts, metadatas=metadatas, ids=ids)

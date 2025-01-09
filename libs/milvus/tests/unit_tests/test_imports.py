@@ -5,6 +5,8 @@ EXPECTED_ALL = [
     "MilvusCollectionHybridSearchRetriever",
     "Zilliz",
     "ZillizCloudPipelineRetriever",
+    "BaseMilvusBuiltInFunction",
+    "BM25BuiltInFunction",
 ]
 
 

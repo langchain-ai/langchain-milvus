@@ -35,7 +35,7 @@ class BaseMilvusBuiltInFunction(ABC):
         return self.function.type
 
 
-class Bm25BuiltInFunction(BaseMilvusBuiltInFunction):
+class BM25BuiltInFunction(BaseMilvusBuiltInFunction):
     """
     Milvus BM25 built-in function.
 
