@@ -1,3 +1,7 @@
+from langchain_milvus.function import (
+    BaseMilvusBuiltInFunction,
+    BM25BuiltInFunction,
+)
 from langchain_milvus.retrievers import (
     MilvusCollectionHybridSearchRetriever,
     ZillizCloudPipelineRetriever,
@@ -9,4 +13,6 @@ __all__ = [
     "Zilliz",
     "ZillizCloudPipelineRetriever",
     "MilvusCollectionHybridSearchRetriever",
+    "BaseMilvusBuiltInFunction",
+    "BM25BuiltInFunction",
 ]
