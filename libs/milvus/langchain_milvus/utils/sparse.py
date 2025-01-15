@@ -45,9 +45,4 @@ class BM25SparseEmbedding(BaseSparseEmbedding):
         return [self._sparse_to_dict(sparse_array) for sparse_array in sparse_arrays]
 
     def _sparse_to_dict(self, sparse_array: Any) -> Dict[int, float]:
-        row_indices, col_indices = sparse_array.nonzero()
-        non_zero_values = sparse_array.data
-        result_dict = {}
-        for col_index, value in zip(col_indices, non_zero_values):
-            result_dict[col_index] = value
-        return result_dict
+         return {j: sparse_array[i, j] for i, j in zip(*sparse_array.nonzero())}
