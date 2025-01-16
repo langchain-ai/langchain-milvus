@@ -52,6 +52,17 @@ class BM25BuiltInFunction(BaseMilvusBuiltInFunction):
         enable_match: bool = False,
         function_name: Optional[str] = None,
     ):
+        """
+        Args:
+            input_field_names (str): The name of the input field, default is 'text'.
+            output_field_names (str): The name of the output field, default is 'sparse'.
+            analyzer_params (Optional[Dict[Any, Any]]): The parameters for the analyzer.
+                Default is None. See:
+                https://milvus.io/docs/analyzer-overview.md#Analyzer-Overview
+            enable_match (bool): Whether to enable match.
+            function_name (Optional[str]): The name of the function. Default is None,
+                which means a random name will be generated.
+        """
         super().__init__()
         if not function_name:
             function_name = f"bm25_function_{str(uuid.uuid4())[:8]}"
