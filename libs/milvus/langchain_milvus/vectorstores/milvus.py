@@ -211,17 +211,6 @@ class Milvus(VectorStore):
 
             * thud [{'baz': 'baz', 'pk': '2'}]
 
-    Search with filter:
-        .. code-block:: python
-
-            results = vector_store.similarity_search(query="thud",k=1,filter={"bar": "baz"})
-            for doc in results:
-                print(f"* {doc.page_content} [{doc.metadata}]")
-
-        .. code-block:: python
-
-            * thud [{'baz': 'baz', 'pk': '2'}]
-
     Search with score:
         .. code-block:: python
 
