@@ -212,6 +212,50 @@ def test_milvus_get_pks(temp_milvus_db: Any) -> None:
     output = _get_pks(expr, docsearch)
     assert len(output) == 2
 
+def test_search_by_metadata(temp_milvus_db: Any) -> None:
+    """
+    Test metadata-based search in Milvus.
+
+    This function verifies that `search_by_metadata` correctly retrieves
+    documents based on a metadata filtering expression.
+    """
+    from pymilvus import DataType
+
+    # Sample texts and metadata for Milvus collection
+    texts = ["Song A", "Song B", "Song C"]
+    metadatas = [
+        {"id": 1, "SingerName": "IU", "Genre": "Ballad"},
+        {"id": 2, "SingerName": "BTS", "Genre": "Pop"},
+        {"id": 3, "SingerName": "IU", "Genre": "K-Pop"},
+    ]
+
+    # Create a Milvus collection with sample data
+    docsearch = temp_milvus_db.from_texts(
+        texts=texts,
+        embedding=None,  # No embedding needed for metadata search
+        metadatas=metadatas,
+        metadata_schema={
+            "id": {"dtype": DataType.INT64},
+            "SingerName": {"dtype": DataType.VARCHAR, "max_length": 100},
+            "Genre": {"dtype": DataType.VARCHAR, "max_length": 100},
+        },
+        auto_id=False,
+    )
+
+    # Search for all songs by IU
+    output = docsearch.search_by_metadata(expr="SingerName == 'IU'", limit=10)
+    assert len(output) == 2  # Expecting 2 results for IU
+    assert all(doc.metadata["SingerName"] == "IU" for doc in output)
+
+    # Search for Ballad genre songs
+    output = docsearch.search_by_metadata(expr="Genre == 'Ballad'", limit=10)
+    assert len(output) == 1  # Expecting 1 result
+    assert output[0].metadata["Genre"] == "Ballad"
+
+    # Search with a condition that should return no results
+    output = docsearch.search_by_metadata(expr="Genre == 'Rock'", limit=10)
+    assert len(output) == 0  # Expecting 0 results
+
 
 def test_milvus_delete_entities(temp_milvus_db: Any) -> None:
     """Test end to end construction and delete entities"""
