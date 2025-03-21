@@ -487,11 +487,11 @@ def test_milvus_multi_vector_with_index_params(temp_milvus_db: Any) -> None:
     """Test setting index params which are different from the defaults."""
     index_param_1 = {
         "metric_type": "COSINE",
-        "index_type": "HNSW",
+        "index_type": "AUTOINDEX",
     }
     index_param_2 = {
         "metric_type": "IP",
-        "index_type": "HNSW",
+        "index_type": "AUTOINDEX",
     }
 
     docsearch = Milvus.from_texts(
@@ -525,11 +525,11 @@ def test_milvus_multi_vector_search_with_ranker(temp_milvus_db: Any) -> None:
 
     index_param_1 = {
         "metric_type": "L2",
-        "index_type": "HNSW",
+        "index_type": "AUTOINDEX",
     }
     index_param_2 = {
         "metric_type": "L2",
-        "index_type": "HNSW",
+        "index_type": "AUTOINDEX",
     }
 
     # Force the query vector to always be identical

@@ -26,7 +26,7 @@ ignore_missing_imports = "True"
 
 [tool.poetry.dependencies]
 python = ">=3.9,<4.0"
-pymilvus = "^2.5.0"
+pymilvus = "^2.5.5"
 langchain-core = ">=0.2.38,<0.4"
 
 [tool.coverage.run]
@@ -63,14 +63,16 @@ pytest-mock = "^3.10.0"
 syrupy = "^4.0.2"
 pytest-watcher = "^0.3.4"
 pytest-asyncio = "^0.21.1"
-milvus_model = "^0.2.0"
+"pymilvus.model" = "^0.3.1"
+onnxruntime = "<= 1.19.2"  # the higher version of onnxruntime can not be found in the CI installation
 langchain-core = { git = "https://github.com/langchain-ai/langchain.git", subdirectory = "libs/core" }
 
 [tool.poetry.group.codespell.dependencies]
 codespell = "^2.2.0"
 
 [tool.poetry.group.test_integration.dependencies]
-milvus_model = "^0.2.0"
+"pymilvus.model" = "^0.3.1"
+onnxruntime = "<= 1.19.2"
 
 [tool.poetry.group.lint.dependencies]
 ruff = "^0.1.5"

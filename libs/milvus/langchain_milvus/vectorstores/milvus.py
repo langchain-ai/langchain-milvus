@@ -907,19 +907,11 @@ class Milvus(VectorStore):
                 self.embedding_func
             )
 
-            # For backward compatibility
-            if type(self) is Milvus:
-                default_index_params = {
-                    "metric_type": "L2",
-                    "index_type": "HNSW",
-                    "params": {"M": 8, "efConstruction": 64},
-                }
-            else:  # Zilliz, which is subclass of Milvus
-                default_index_params = {
-                    "metric_type": "L2",
-                    "index_type": "AUTOINDEX",
-                    "params": {},
-                }
+            default_index_params = {
+                "metric_type": "L2",
+                "index_type": "AUTOINDEX",
+                "params": {},
+            }
             for vector_field, embeddings_func in zip(
                 self._vector_fields_from_embedding, embeddings_functions
             ):
