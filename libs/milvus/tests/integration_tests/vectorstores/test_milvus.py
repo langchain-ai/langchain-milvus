@@ -212,6 +212,7 @@ def test_milvus_get_pks(temp_milvus_db: Any) -> None:
     output = _get_pks(expr, docsearch)
     assert len(output) == 2
 
+
 def test_search_by_metadata(temp_milvus_db: Any) -> None:
     """
     Test metadata-based search in Milvus.

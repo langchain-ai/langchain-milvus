@@ -2065,10 +2065,7 @@ class Milvus(VectorStore):
         return [field for field in fields if field not in forbidden_fields]
 
     def search_by_metadata(
-        self, 
-        expr: str, 
-        fields: Optional[List[str]] = None, 
-        limit: int = 10
+        self, expr: str, fields: Optional[List[str]] = None, limit: int = 10
     ) -> List[Document]:
         """
         Searches the Milvus vector store based on metadata conditions.
@@ -2086,7 +2083,7 @@ class Milvus(VectorStore):
             List[Document]: List of documents matching the metadata filter.
         """
         from pymilvus import MilvusException
-        
+
         if self.col is None:
             logger.debug("No existing collection to search.")
             return []
