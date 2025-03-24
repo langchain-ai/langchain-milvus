@@ -277,6 +277,7 @@ class Milvus(VectorStore):
         enable_dynamic_field: bool = False,
         metadata_field: Optional[str] = None,
         partition_key_field: Optional[str] = None,
+        num_partitions: Optional[str] = None,
         partition_names: Optional[list] = None,
         replica_number: int = 1,
         timeout: Optional[float] = None,
@@ -659,6 +660,7 @@ class Milvus(VectorStore):
                     consistency_level=self.consistency_level,
                     using=self.alias,
                     num_shards=self.num_shards,
+                    num_partitions = self.num_partitions,
                 )
             else:
                 self.col = Collection(
@@ -666,6 +668,7 @@ class Milvus(VectorStore):
                     schema=schema,
                     consistency_level=self.consistency_level,
                     using=self.alias,
+                    num_partitions = self.num_partitions,
                 )
             # Set the collection properties if they exist
             if self.collection_properties is not None:
