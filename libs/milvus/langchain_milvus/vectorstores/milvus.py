@@ -778,7 +778,7 @@ class Milvus(VectorStore):
                     break
 
         fields.append(
-            FieldSchema(self._text_field, DataType.VARCHAR, max_length=65_535, **kwargs)
+            FieldSchema(self._text_field, DataType.VARCHAR, max_length=65_535, enable_analyzer=True, enable_match=True, **kwargs)
         )
         return fields
 
