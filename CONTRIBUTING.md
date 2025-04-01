@@ -13,6 +13,15 @@ cd libs/milvus
 poetry install
 ```
 
+## Pull Request Process
+
+1. Fork the repository and create your branch from `main`.
+2. Make your changes.
+3. Run tests and linting to ensure your code meets the project's standards.
+4. Update documentation if necessary.
+5. Submit a pull request.
+
+
 ## Development Workflow
 
 ### Running Tests
@@ -25,6 +34,9 @@ make test
 
 # Run specific test file
 make test TEST_FILE=tests/unit_tests/specific_test.py
+
+# Run specific test method
+make test TEST_FILE=tests/unit_tests/specific_test.py::test_method_name
 
 # Run integration tests
 make integration_tests
@@ -80,13 +92,51 @@ make spell_fix
 make check_imports
 ```
 
-## Pull Request Process
 
-1. Fork the repository and create your branch from `master`.
-2. Make your changes.
-3. Run tests and linting to ensure your code meets the project's standards.
-4. Update documentation if necessary.
-5. Submit a pull request.
+### Managing Dependencies with Poetry
+
+If you want to modify project dependencies, you can refer to the [Poetry document](https://python-poetry.org/docs/managing-dependencies/). Here are some common commands to manage dependencies:
+
+#### Adding Dependencies
+
+```bash
+# Add a regular dependency
+poetry add package-name
+
+# Add a development dependency
+poetry add --group dev package-name
+
+# Add a dependency with specific version
+poetry add package-name==1.2.3
+
+# Add a dependency with version constraints
+poetry add "package-name>=1.0.0,<2.0.0"
+```
+
+#### Updating Dependencies
+
+To update the project's dependencies:
+
+```bash
+# Update all dependencies
+poetry update
+
+# Update a specific dependency
+poetry update package-name
+```
+
+#### Locking Dependencies
+
+After adding or updating dependencies, Poetry automatically updates the `poetry.lock` file. If you need to manually generate or update the lock file:
+
+```bash
+# Generate/update the lock file without installing dependencies
+poetry lock
+
+# Update the lock file and install dependencies
+poetry lock --no-update
+```
+
 
 ## Code of Conduct
 

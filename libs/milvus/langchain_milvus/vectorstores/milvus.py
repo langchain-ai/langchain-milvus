@@ -1265,8 +1265,21 @@ class Milvus(VectorStore):
                 res = self.col.insert(batch_insert_list, timeout=timeout, **kwargs)
                 pks.extend(res.primary_keys)
             except MilvusException as e:
+                first_entity = {}
+                if batch_insert_list:
+                    first_entity = batch_insert_list[0]
+                log_entity = {}
+                for k, v in first_entity.items():
+                    if isinstance(v, list) and len(v) > 10:
+                        log_entity[k] = f"{v[:10]}... (truncated, total len: {len(v)})"
+                    else:
+                        log_entity[k] = v
                 logger.error(
-                    "Failed to insert batch starting at entity: %s/%s", i, total_count
+                    "Failed to insert batch starting at entity: %s/%s. "
+                    "First entity data: %s",
+                    i,
+                    total_count,
+                    log_entity,
                 )
                 raise e
         return pks
