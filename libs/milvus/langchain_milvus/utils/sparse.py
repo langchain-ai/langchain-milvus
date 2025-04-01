@@ -1,3 +1,4 @@
+import warnings
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List
 
@@ -39,6 +40,16 @@ class BM25SparseEmbedding(BaseSparseEmbedding):
     """
 
     def __init__(self, corpus: List[str], language: str = "en"):
+        warnings.warn(
+            "BM25SparseEmbedding class will be deprecated in the future. "
+            "We recommend using the Milvus built-in BM25 function instead, "
+            "which is easier to use "
+            "and doesn't require manual corpus management. "
+            "For more information, please refer to: "
+            "https://milvus.io/docs/full-text-search.md#Full-Text-Search",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         from pymilvus.model.sparse import BM25EmbeddingFunction  # type: ignore
         from pymilvus.model.sparse.bm25.tokenizers import (  # type: ignore
             build_default_analyzer,
