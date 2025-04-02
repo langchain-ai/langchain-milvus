@@ -1277,7 +1277,7 @@ class Milvus(VectorStore):
                 logger.error(
                     "Failed to insert batch starting at entity: %s/%s. "
                     "First entity data: %s",
-                    i,
+                    i + 1,
                     total_count,
                     log_entity,
                 )
