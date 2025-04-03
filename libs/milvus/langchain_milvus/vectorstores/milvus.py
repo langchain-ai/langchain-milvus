@@ -660,7 +660,7 @@ class Milvus(VectorStore):
                     consistency_level=self.consistency_level,
                     using=self.alias,
                     num_shards=self.num_shards,
-                    num_partitions = self.num_partitions,
+                    num_partitions=self.num_partitions,
                 )
             else:
                 self.col = Collection(
