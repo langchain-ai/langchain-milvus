@@ -220,8 +220,6 @@ def test_search_by_metadata(temp_milvus_db: Any) -> None:
     This function verifies that `search_by_metadata` correctly retrieves
     documents based on a metadata filtering expression.
     """
-    from pymilvus import DataType
-
     # Sample texts and metadata for Milvus collection
     texts = ["Song A", "Song B", "Song C"]
     metadatas = [
@@ -231,16 +229,14 @@ def test_search_by_metadata(temp_milvus_db: Any) -> None:
     ]
 
     # Create a Milvus collection with sample data
-    docsearch = temp_milvus_db.from_texts(
+    docsearch = Milvus.from_texts(
         texts=texts,
-        embedding=None,  # No embedding needed for metadata search
+        embedding=FakeEmbeddings(),
         metadatas=metadatas,
-        metadata_schema={
-            "id": {"dtype": DataType.INT64},
-            "SingerName": {"dtype": DataType.VARCHAR, "max_length": 100},
-            "Genre": {"dtype": DataType.VARCHAR, "max_length": 100},
-        },
         auto_id=False,
+        drop_old=True,
+        consistency_level="Strong",
+        connection_args={"uri": temp_milvus_db},
     )
 
     # Search for all songs by IU
