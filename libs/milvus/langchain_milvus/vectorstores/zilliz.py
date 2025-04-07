@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from langchain_milvus.vectorstores.milvus import Milvus
 
@@ -69,6 +70,17 @@ class Zilliz(Milvus):
     Raises:
         ValueError: If the pymilvus python package is not installed.
     """
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        import warnings
+
+        warnings.warn(
+            "The Zilliz class will be deprecated in the future. "
+            "Please use the Milvus class instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(*args, **kwargs)
 
     # For backwards compatibility, this class is preserved.
     # But it is recommended to use Milvus instead.

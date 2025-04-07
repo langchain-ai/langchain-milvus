@@ -1268,8 +1268,21 @@ class Milvus(VectorStore):
                 res = self.col.insert(batch_insert_list, timeout=timeout, **kwargs)
                 pks.extend(res.primary_keys)
             except MilvusException as e:
+                first_entity = {}
+                if batch_insert_list:
+                    first_entity = batch_insert_list[0]
+                log_entity = {}
+                for k, v in first_entity.items():
+                    if isinstance(v, list) and len(v) > 10:
+                        log_entity[k] = f"{v[:10]}... (truncated, total len: {len(v)})"
+                    else:
+                        log_entity[k] = v
                 logger.error(
-                    "Failed to insert batch starting at entity: %s/%s", i, total_count
+                    "Failed to insert batch starting at entity: %s/%s. "
+                    "First entity data: %s",
+                    i + 1,
+                    total_count,
+                    log_entity,
                 )
                 raise e
         return pks
@@ -2058,3 +2071,41 @@ class Milvus(VectorStore):
                     self._as_list(builtin_function.output_field_names)
                 )
         return [field for field in fields if field not in forbidden_fields]
+
+    def search_by_metadata(
+        self, expr: str, fields: Optional[List[str]] = None, limit: int = 10
+    ) -> List[Document]:
+        """
+        Searches the Milvus vector store based on metadata conditions.
+
+        This function performs a metadata-based query using an expression
+        that filters stored documents without vector similarity.
+
+        Args:
+            expr (str): A filtering expression (e.g., `"city == 'Seoul'"`).
+            fields (Optional[List[str]]): List of fields to retrieve.
+                                          If None, retrieves all available fields.
+            limit (int): Maximum number of results to return.
+
+        Returns:
+            List[Document]: List of documents matching the metadata filter.
+        """
+        from pymilvus import MilvusException
+
+        if self.col is None:
+            logger.debug("No existing collection to search.")
+            return []
+
+        # Default to retrieving all fields if none are provided
+        if fields is None:
+            fields = self.fields
+
+        try:
+            results = self.col.query(expr=expr, output_fields=fields, limit=limit)
+            return [
+                Document(page_content=result[self._text_field], metadata=result)
+                for result in results
+            ]
+        except MilvusException as e:
+            logger.error(f"Metadata search failed: {e}")
+            return []
