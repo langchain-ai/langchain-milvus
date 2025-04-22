@@ -277,7 +277,7 @@ class Milvus(VectorStore):
         enable_dynamic_field: bool = False,
         metadata_field: Optional[str] = None,
         partition_key_field: Optional[str] = None,
-        num_partitions: Optional[str] = None,
+        num_partitions: Optional[int] = None,
         partition_names: Optional[list] = None,
         replica_number: int = 1,
         timeout: Optional[float] = None,
