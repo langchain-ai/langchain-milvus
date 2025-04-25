@@ -4,8 +4,8 @@ from langchain_core.callbacks import CallbackManagerForRetrieverRun
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.retrievers import BaseRetriever
-from pymilvus import AnnSearchRequest, Collection
-from pymilvus.client.abstract import BaseRanker, SearchResult  # type: ignore
+from pymilvus import AnnSearchRequest, Collection, SearchResult
+from pymilvus.client.abstract import BaseRanker  # type: ignore
 
 from langchain_milvus.utils.sparse import BaseSparseEmbedding
 
