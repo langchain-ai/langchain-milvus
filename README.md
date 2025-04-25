@@ -4,7 +4,7 @@
 [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/LangChainAI.svg?style=social&label=Follow%20%40LangChain)](https://x.com/LangChainAI)
 [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/milvusio.svg?style=social&label=Follow%20%40Milvus)](https://x.com/milvusio)
 
-![alt text](https://github.com/langchain-ai/langchain-milvus/blob/main/readme_img.png)
+![alt text](readme_img.png)
 This repository contains the Milvus integration package for LangChain:
 
 - [langchain-milvus](https://pypi.org/project/langchain-milvus/) - A powerful integration between LangChain and Milvus, enabling vector search and retrievers for AI applications.
