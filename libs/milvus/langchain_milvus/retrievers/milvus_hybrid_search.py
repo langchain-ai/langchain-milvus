@@ -1,3 +1,4 @@
+import warnings
 from typing import Any, Dict, List, Optional, Union
 
 from langchain_core.callbacks import CallbackManagerForRetrieverRun
@@ -46,6 +47,18 @@ class MilvusCollectionHybridSearchRetriever(BaseRetriever):
     which will be the `metadata` of a `Document` object."""
 
     def __init__(self, **kwargs: Any):
+        warnings.warn(
+            "This class is no longer the recommended way to perform hybrid retrieval "
+            "in langchain-milvus. "
+            "Please refer to the latest documentation at "
+            "https://milvus.io/docs/milvus_hybrid_search_retriever.md "
+            "or "
+            "https://"
+            "python.langchain.com/docs/integrations/vectorstores/milvus/#hybrid-search"
+            " for the recommended approach.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         super().__init__(**kwargs)
 
         # If some parameters are not specified, set default values

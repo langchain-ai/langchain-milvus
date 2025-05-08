@@ -29,7 +29,6 @@ from pymilvus import (
     MilvusClient,
     MilvusException,
     RRFRanker,
-    SearchResult,
     WeightedRanker,
     utility,
 )
@@ -1260,10 +1259,14 @@ class Milvus(VectorStore):
             batch_insert_list = insert_list[i:end]
             # Insert into the collection.
             try:
-                res: Collection
                 timeout = self.timeout or timeout
-                res = self.col.insert(batch_insert_list, timeout=timeout, **kwargs)
-                pks.extend(res.primary_keys)
+                res = self.client.insert(
+                    self.collection_name,
+                    batch_insert_list,
+                    timeout=timeout,
+                    **kwargs,
+                )
+                pks.extend(res["ids"])
             except MilvusException as e:
                 first_entity = {}
                 if batch_insert_list:
@@ -1292,7 +1295,7 @@ class Milvus(VectorStore):
         expr: Optional[str] = None,
         timeout: Optional[float] = None,
         **kwargs: Any,
-    ) -> Optional[SearchResult]:
+    ) -> Optional[List[List[dict]]]:
         """Perform a search on an embedding or a query text and return milvus search
         results.
 
@@ -1312,7 +1315,7 @@ class Milvus(VectorStore):
             kwargs: Collection.search() keyword arguments.
 
         Returns:
-            pymilvus.client.abstract.SearchResult: Milvus search result.
+            List[List[dict]]: Milvus search result.
         """
         if self.col is None:
             logger.debug("No existing collection to search.")
@@ -1334,12 +1337,13 @@ class Milvus(VectorStore):
             output_fields = ["*"]
         else:
             output_fields = self._remove_forbidden_fields(self.fields[:])
-        col_search_res = self.col.search(
+        col_search_res = self.client.search(
+            self.collection_name,
             data=[embedding_or_text],
             anns_field=self._vector_field,
-            param=param,
+            search_params=param,
             limit=k,
-            expr=expr,
+            filter=expr,
             output_fields=output_fields,
             timeout=self.timeout or timeout,
             **kwargs,
@@ -1357,7 +1361,7 @@ class Milvus(VectorStore):
         ranker_params: Optional[dict] = None,
         timeout: Optional[float] = None,
         **kwargs: Any,
-    ) -> Optional[SearchResult]:
+    ) -> Optional[List[List[dict]]]:
         """
         Perform a hybrid search on a query string and return milvus search results.
 
@@ -1381,7 +1385,7 @@ class Milvus(VectorStore):
             kwargs: Collection.hybrid_search() keyword arguments.
 
         Returns:
-            pymilvus.client.abstract.SearchResult: Milvus search result.
+            List[List[dict]]: Milvus search result.
         """
         if self.col is None:
             logger.debug("No existing collection to search.")
@@ -1426,9 +1430,10 @@ class Milvus(VectorStore):
             output_fields = ["*"]
         else:
             output_fields = self._remove_forbidden_fields(self.fields[:])
-        col_search_res = self.col.hybrid_search(
+        col_search_res = self.client.hybrid_search(
+            self.collection_name,
             reqs=search_requests,
-            rerank=reranker,
+            ranker=reranker,
             limit=k,
             output_fields=output_fields,
             timeout=self.timeout or timeout,
@@ -1723,14 +1728,14 @@ class Milvus(VectorStore):
         documents = []
         scores = []
         for result in col_search_res[0]:
-            data = {x: result.entity.get(x) for x in result.entity.fields}
-            doc = self._parse_document(data)
+            doc = self._parse_document(result["entity"])
             documents.append(doc)
-            scores.append(result.score)
-            ids.append(result.id)
+            scores.append(result["distance"])
+            ids.append(result.get(self._primary_field, "id"))
 
-        vectors = self.col.query(  # type: ignore[union-attr]
-            expr=f"{self._primary_field} in {ids}",
+        vectors = self.client.query(
+            self.collection_name,
+            filter=f"{self._primary_field} in {ids}",
             output_fields=[self._primary_field, self._vector_field],
             timeout=timeout,
         )
@@ -1934,15 +1939,14 @@ class Milvus(VectorStore):
 
     def _parse_documents_from_search_results(
         self,
-        col_search_res: SearchResult,
+        col_search_res: Optional[List[List[dict]]],
     ) -> List[Tuple[Document, float]]:
         if not col_search_res:
             return []
         ret = []
         for result in col_search_res[0]:
-            data = {x: result.entity.get(x) for x in result.entity.fields}
-            doc = self._parse_document(data)
-            pair = (doc, result.score)
+            doc = self._parse_document(result["entity"])
+            pair = (doc, result["distance"])
             ret.append(pair)
         return ret
 
@@ -1975,8 +1979,10 @@ class Milvus(VectorStore):
             return None
 
         try:
-            query_result = self.col.query(
-                expr=expr, output_fields=[self._primary_field]
+            query_result = self.client.query(
+                self.collection_name,
+                filter=expr,
+                output_fields=[self._primary_field],
             )
         except MilvusException as exc:
             logger.error("Failed to get ids: %s error: %s", self.collection_name, exc)
@@ -2098,7 +2104,12 @@ class Milvus(VectorStore):
             fields = self.fields
 
         try:
-            results = self.col.query(expr=expr, output_fields=fields, limit=limit)
+            results = self.client.query(
+                self.collection_name,
+                filter=expr,
+                output_fields=fields,
+                limit=limit,
+            )
             return [
                 Document(page_content=result[self._text_field], metadata=result)
                 for result in results
