@@ -340,6 +340,7 @@ class Milvus(VectorStore):
         self.search_params = search_params
         self.consistency_level = consistency_level
         self.auto_id = auto_id
+        self.num_partitions = num_partitions
 
         # In order for a collection to be compatible, pk needs to be varchar
         self._primary_field = primary_field
