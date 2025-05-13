@@ -38,10 +38,38 @@ jobs:
         shell: bash
         run: poetry install --with test
 
-      - name: Run core tests
+      - name: Run unit tests
         shell: bash
         run: |
           make test
+
+      - name: Create temporary directory for Milvus
+        run: |
+          mkdir -p milvus_temp
+          cd milvus_temp
+          wget https://raw.githubusercontent.com/milvus-io/milvus/master/scripts/standalone_embed.sh
+          cd ..
+
+      - name: Run Milvus
+        run: |
+          cd milvus_temp
+          bash standalone_embed.sh start
+          cd ..
+          sleep 5
+          echo "\nMilvus server started!"
+
+      - name: Run integration tests
+        shell: bash
+        run: |
+          make integration_test
+
+      - name: Stop and Remove Milvus
+        run: |
+          cd milvus_temp
+          bash standalone_embed.sh stop
+          cd ..
+          sudo rm -rf milvus_temp
+          echo "\nMilvus server stopped and removed!"
 
       - name: Ensure the tests did not create any additional files
         shell: bash
