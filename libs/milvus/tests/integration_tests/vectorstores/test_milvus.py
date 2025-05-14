@@ -14,10 +14,27 @@
 from typing import ClassVar, Optional
 
 from tests.test_milvus_base import TestMilvusBase
+from tests.test_milvus_base_async import TestMilvusBaseAsync
 
 
 class TestMilvusStandalone(TestMilvusBase):
     """Test class for Milvus vectorstore functionality."""
+
+    # Override the __test__ attribute to make this class testable
+    __test__ = True
+
+    # Add proper type annotation to match base class
+    TEST_URI: ClassVar[Optional[str]] = "http://localhost:19530"
+
+    def get_test_uri(self) -> str:
+        """Return the URI for the Milvus standalone instance."""
+        if self.TEST_URI is None:
+            raise ValueError("TEST_URI is not set")
+        return self.TEST_URI
+
+
+class TestMilvusStandaloneAsync(TestMilvusBaseAsync):
+    """Test class for Milvus vectorstore async functionality."""
 
     # Override the __test__ attribute to make this class testable
     __test__ = True
