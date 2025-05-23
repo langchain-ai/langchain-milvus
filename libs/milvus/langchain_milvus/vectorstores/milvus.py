@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import warnings
 from typing import (
     Any,
     Callable,
@@ -1075,12 +1076,14 @@ class Milvus(VectorStore):
             List[str]: The resulting keys for each inserted element.
         """
         texts = list(texts)
-        if not self.auto_id:
-            assert isinstance(ids, list), (
-                "A list of valid ids are required when auto_id is False. "
-                "You can set `auto_id` to True in this Milvus instance to generate "
-                "ids automatically, or specify string-type ids for each text."
+        if not self.auto_id and ids is None:
+            warnings.warn(
+                "No ids provided and auto_id is False. "
+                "Setting auto_id to True automatically.",
+                UserWarning,
             )
+            self.auto_id = True
+        elif not self.auto_id and ids:  # Check ids
             assert len(set(ids)) == len(
                 texts
             ), "Different lengths of texts and unique ids are provided."
@@ -1089,12 +1092,11 @@ class Milvus(VectorStore):
                 len(x.encode()) <= 65_535 for x in ids
             ), "Each id should be a string less than 65535 bytes."
 
-        else:
-            if ids is not None:
-                logger.warning(
-                    "The ids parameter is ignored when auto_id is True. "
-                    "The ids will be generated automatically."
-                )
+        elif self.auto_id and ids:
+            logger.warning(
+                "The ids parameter is ignored when auto_id is True. "
+                "The ids will be generated automatically."
+            )
 
         embeddings_functions: List[EmbeddingType] = self._as_list(self.embedding_func)
         embeddings: List = []
@@ -1979,7 +1981,6 @@ class Milvus(VectorStore):
         Returns:
             List of IDs of the added texts.
         """
-        # TODO: Handle the case where the user doesn't provide ids on the Collection
         texts = [doc.page_content for doc in documents]
         metadatas = [doc.metadata for doc in documents]
         return self.add_texts(texts, metadatas, **kwargs)
@@ -2176,12 +2177,14 @@ class Milvus(VectorStore):
             List[str]: The resulting keys for each inserted element.
         """
         texts = list(texts)
-        if not self.auto_id:
-            assert isinstance(ids, list), (
-                "A list of valid ids are required when auto_id is False. "
-                "You can set `auto_id` to True in this Milvus instance to generate "
-                "ids automatically, or specify string-type ids for each text."
+        if not self.auto_id and ids is None:
+            warnings.warn(
+                "No ids provided and auto_id is False. "
+                "Setting auto_id to True automatically.",
+                UserWarning,
             )
+            self.auto_id = True
+        elif not self.auto_id and ids:  # Check ids
             assert len(set(ids)) == len(
                 texts
             ), "Different lengths of texts and unique ids are provided."
@@ -2190,12 +2193,11 @@ class Milvus(VectorStore):
                 len(x.encode()) <= 65_535 for x in ids
             ), "Each id should be a string less than 65535 bytes."
 
-        else:
-            if ids is not None:
-                logger.warning(
-                    "The ids parameter is ignored when auto_id is True. "
-                    "The ids will be generated automatically."
-                )
+        elif self.auto_id and ids:
+            logger.warning(
+                "The ids parameter is ignored when auto_id is True. "
+                "The ids will be generated automatically."
+            )
 
         embeddings_functions: List[EmbeddingType] = self._as_list(self.embedding_func)
         embeddings: List = []
@@ -2966,7 +2968,6 @@ class Milvus(VectorStore):
         Returns:
             List of IDs of the added texts.
         """
-        # TODO: Handle the case where the user doesn't provide ids on the Collection
         texts = [doc.page_content for doc in documents]
         metadatas = [doc.metadata for doc in documents]
         return await self.aadd_texts(texts, metadatas, **kwargs)
