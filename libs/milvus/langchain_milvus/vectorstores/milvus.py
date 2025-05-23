@@ -277,6 +277,7 @@ class Milvus(VectorStore):
         enable_dynamic_field: bool = False,
         metadata_field: Optional[str] = None,
         partition_key_field: Optional[str] = None,
+        num_partitions: Optional[int] = None,
         partition_names: Optional[list] = None,
         replica_number: int = 1,
         timeout: Optional[float] = None,
@@ -340,6 +341,7 @@ class Milvus(VectorStore):
         self.search_params = search_params
         self.consistency_level = consistency_level
         self.auto_id = auto_id
+        self.num_partitions = num_partitions
 
         # In order for a collection to be compatible, pk needs to be varchar
         self._primary_field = primary_field
@@ -667,6 +669,7 @@ class Milvus(VectorStore):
                     consistency_level=self.consistency_level,
                     using=self.alias,
                     num_shards=self.num_shards,
+                    num_partitions=self.num_partitions,
                 )
             else:
                 self.col = Collection(
@@ -674,6 +677,7 @@ class Milvus(VectorStore):
                     schema=schema,
                     consistency_level=self.consistency_level,
                     using=self.alias,
+                    num_partitions=self.num_partitions,
                 )
             # Set the collection properties if they exist
             if self.collection_properties is not None:
