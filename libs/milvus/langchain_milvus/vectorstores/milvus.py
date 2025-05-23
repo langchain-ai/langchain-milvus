@@ -2036,7 +2036,7 @@ class Milvus(VectorStore):
             except MilvusException:
                 pass
         try:
-            return self.add_documents(documents=documents, **kwargs)
+            return self.add_documents(documents=documents, ids=ids, **kwargs)
         except MilvusException as exc:
             logger.error(
                 "Failed to upsert entities: %s error: %s", self.collection_name, exc
