@@ -269,8 +269,14 @@ class TestMilvusBase(ABC):
             Document(page_content="test_1", metadata={"id": 1}),
             Document(page_content="test_2", metadata={"id": 3}),
         ]
-        ids = docsearch.upsert(pks, documents)
-        assert len(ids) == 2  # type: ignore[arg-type]
+        docsearch.upsert(pks, documents)
+        expr = "id in [1,3]"
+        res = docsearch.client.query(
+            collection_name=docsearch.collection_name, filter=expr
+        )
+        assert len(res) == 2
+        assert res[0]["id"] == 1
+        assert res[1]["id"] == 3
 
     def test_milvus_enable_dynamic_field(self) -> None:
         """Test end to end construction and enable dynamic field"""
