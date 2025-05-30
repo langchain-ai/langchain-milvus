@@ -1038,6 +1038,67 @@ class Milvus(VectorStore):
                 timeout=timeout,
             )
 
+    def _prepare_insert_list(
+        self,
+        texts: List[str],
+        embeddings: List[List[float]] | List[List[List[float]]],
+        metadatas: Optional[List[dict]] = None,
+        ids: Optional[List[str]] = None,
+        force_ids: bool = False,
+    ) -> list[dict]:
+        """Prepare insert list for batch insertion.
+
+        Args:
+            texts: List of texts to insert
+            embeddings: List of embeddings corresponding to the texts
+            metadatas: Optional metadata for each text
+            ids: Optional IDs for each text
+            force_ids: If force_ids, when auto_id is True and ids is not None,
+             it will return a list containing the customized ids, otherwise,
+             it will not contain the customized ids.
+
+        Returns:
+            List of dictionaries ready for insertion
+        """
+        insert_list: list[dict] = []
+
+        for vector_field_embeddings in embeddings:
+            assert len(texts) == len(
+                vector_field_embeddings
+            ), "Mismatched lengths of texts and embeddings."
+
+        if metadatas is not None:
+            assert len(texts) == len(
+                metadatas
+            ), "Mismatched lengths of texts and metadatas."
+
+        for i, text in zip(range(len(texts)), texts):
+            entity_dict = {}
+            metadata = metadatas[i] if metadatas else {}
+            if not self.auto_id or force_ids:
+                entity_dict[self._primary_field] = ids[i]  # type: ignore[index]
+
+            entity_dict[self._text_field] = text
+
+            for vector_field, vector_field_embeddings in zip(  # type: ignore
+                self._vector_fields_from_embedding, embeddings
+            ):
+                entity_dict[vector_field] = vector_field_embeddings[i]
+
+            if self._metadata_field and not self.enable_dynamic_field:
+                entity_dict[self._metadata_field] = metadata
+            else:
+                for key, value in metadata.items():
+                    # if not enable_dynamic_field, skip fields not in the collection.
+                    if not self.enable_dynamic_field and key not in self.fields:
+                        continue
+                    # If enable_dynamic_field, all fields are allowed.
+                    entity_dict[key] = value
+
+            insert_list.append(entity_dict)
+
+        return insert_list
+
     def add_texts(
         self,
         texts: Iterable[str],
@@ -1221,42 +1282,12 @@ class Milvus(VectorStore):
                 kwargs["timeout"] = self.timeout
             self._init(**kwargs)
 
-        insert_list: list[dict] = []
-
-        for vector_field_embeddings in embeddings:
-            assert len(texts) == len(
-                vector_field_embeddings
-            ), "Mismatched lengths of texts and embeddings."
-
-        if metadatas is not None:
-            assert len(texts) == len(
-                metadatas
-            ), "Mismatched lengths of texts and metadatas."
-
-        for i, text in zip(range(len(texts)), texts):
-            entity_dict = {}
-            metadata = metadatas[i] if metadatas else {}
-            if not self.auto_id:
-                entity_dict[self._primary_field] = ids[i]  # type: ignore[index]
-
-            entity_dict[self._text_field] = text
-
-            for vector_field, vector_field_embeddings in zip(  # type: ignore
-                self._vector_fields_from_embedding, embeddings
-            ):
-                entity_dict[vector_field] = vector_field_embeddings[i]
-
-            if self._metadata_field and not self.enable_dynamic_field:
-                entity_dict[self._metadata_field] = metadata
-            else:
-                for key, value in metadata.items():
-                    # if not enable_dynamic_field, skip fields not in the collection.
-                    if not self.enable_dynamic_field and key not in self.fields:
-                        continue
-                    # If enable_dynamic_field, all fields are allowed.
-                    entity_dict[key] = value
-
-            insert_list.append(entity_dict)
+        insert_list = self._prepare_insert_list(
+            texts=texts,
+            embeddings=embeddings,
+            metadatas=metadatas,
+            ids=ids,
+        )
 
         # Total insert count
         total_count = len(insert_list)
@@ -1279,24 +1310,48 @@ class Milvus(VectorStore):
                 )
                 pks.extend(res["ids"])
             except MilvusException as e:
-                first_entity = {}
-                if batch_insert_list:
-                    first_entity = batch_insert_list[0]
-                log_entity = {}
-                for k, v in first_entity.items():
-                    if isinstance(v, list) and len(v) > 10:
-                        log_entity[k] = f"{v[:10]}... (truncated, total len: {len(v)})"
-                    else:
-                        log_entity[k] = v
-                logger.error(
-                    "Failed to insert batch starting at entity: %s/%s. "
-                    "First entity data: %s",
-                    i + 1,
-                    total_count,
-                    log_entity,
+                self._handle_batch_operation_exception(
+                    e, batch_insert_list, i, total_count, "insert"
                 )
-                raise e
         return pks
+
+    def _handle_batch_operation_exception(
+        self,
+        e: MilvusException,
+        batch_list: list[dict],
+        batch_index: int,
+        total_count: int,
+        operation_name: str,
+    ) -> None:
+        """Handle batch operation exceptions with detailed logging.
+
+        Args:
+            e: The MilvusException that occurred
+            batch_list: The batch list that caused the exception
+            batch_index: Current batch index (0-based)
+            total_count: Total number of entities
+            operation_name: Name of the operation (e.g., "insert", "upsert")
+
+        Raises:
+            MilvusException: Re-raises the original exception after logging
+        """
+        first_entity = {}
+        if batch_list:
+            first_entity = batch_list[0]
+        log_entity = {}
+        for k, v in first_entity.items():
+            if isinstance(v, list) and len(v) > 10:
+                log_entity[k] = f"{v[:10]}... (truncated, total len: {len(v)})"
+            else:
+                log_entity[k] = v
+        logger.error(
+            "Failed to %s batch starting at entity: %s/%s. " "First entity data: %s",
+            operation_name,
+            batch_index + 1,
+            total_count,
+            log_entity,
+        )
+        raise e
 
     def _collection_search(
         self,
@@ -2015,34 +2070,69 @@ class Milvus(VectorStore):
         self,
         ids: Optional[List[str]] = None,
         documents: List[Document] | None = None,
+        batch_size: int = 1000,
+        timeout: Optional[float] = None,
         **kwargs: Any,
-    ) -> List[str] | None:
+    ) -> None:
         """Update/Insert documents to the vectorstore.
 
         Args:
             ids: IDs to update - Let's call get_pks to get ids with expression \n
             documents (List[Document]): Documents to add to the vectorstore.
 
-        Returns:
-            List[str]: IDs of the added texts.
         """
 
         if documents is None or len(documents) == 0:
             logger.debug("No documents to upsert.")
-            return None
+            return
 
-        if ids is not None and len(ids):
+        if not ids:
+            self.add_documents(documents=documents, **kwargs)
+        else:
+            assert len(set(ids)) == len(
+                documents
+            ), "Different lengths of documents and unique ids are provided."
+
+        embeddings_functions: List[EmbeddingType] = self._as_list(self.embedding_func)
+        embeddings: List = []
+        texts = [doc.page_content for doc in documents]
+        metadatas = [doc.metadata for doc in documents]
+        for embedding_func in embeddings_functions:
             try:
-                self.delete(ids=ids)
-            except MilvusException:
-                pass
-        try:
-            return self.add_documents(documents=documents, **kwargs)
-        except MilvusException as exc:
-            logger.error(
-                "Failed to upsert entities: %s error: %s", self.collection_name, exc
-            )
-            raise exc
+                embeddings.append(embedding_func.embed_documents(texts))
+            except NotImplementedError:
+                embeddings.append([embedding_func.embed_query(x) for x in texts])
+
+        upsert_list = self._prepare_insert_list(
+            texts=texts,
+            embeddings=embeddings,
+            metadatas=metadatas,
+            ids=ids,
+            force_ids=True,
+        )
+
+        # Total upsert count
+        total_count = len(upsert_list)
+
+        assert isinstance(self.col, Collection)
+        for i in range(0, total_count, batch_size):
+            # Grab end index
+            end = min(i + batch_size, total_count)
+            batch_upsert_list = upsert_list[i:end]
+            # Upsert into the collection.
+            try:
+                timeout = self.timeout or timeout
+                self.client.upsert(
+                    self.collection_name,
+                    batch_upsert_list,
+                    timeout=timeout,
+                    **kwargs,
+                )
+            except MilvusException as e:
+                self._handle_batch_operation_exception(
+                    e, batch_upsert_list, i, total_count, "upsert"
+                )
+        return
 
     @staticmethod
     def _as_list(value: Optional[Union[T, List[T]]]) -> List[T]:
@@ -2188,10 +2278,6 @@ class Milvus(VectorStore):
             assert len(set(ids)) == len(
                 texts
             ), "Different lengths of texts and unique ids are provided."
-            assert all(isinstance(x, str) for x in ids), "All ids should be strings."
-            assert all(
-                len(x.encode()) <= 65_535 for x in ids
-            ), "Each id should be a string less than 65535 bytes."
 
         elif self.auto_id and ids:
             logger.warning(
@@ -2293,42 +2379,12 @@ class Milvus(VectorStore):
                 kwargs["timeout"] = self.timeout
             self._init(**kwargs)
 
-        insert_list: list[dict] = []
-
-        for vector_field_embeddings in embeddings:
-            assert len(texts) == len(
-                vector_field_embeddings
-            ), "Mismatched lengths of texts and embeddings."
-
-        if metadatas is not None:
-            assert len(texts) == len(
-                metadatas
-            ), "Mismatched lengths of texts and metadatas."
-
-        for i, text in zip(range(len(texts)), texts):
-            entity_dict = {}
-            metadata = metadatas[i] if metadatas else {}
-            if not self.auto_id:
-                entity_dict[self._primary_field] = ids[i]  # type: ignore[index]
-
-            entity_dict[self._text_field] = text
-
-            for vector_field, vector_field_embeddings in zip(  # type: ignore
-                self._vector_fields_from_embedding, embeddings
-            ):
-                entity_dict[vector_field] = vector_field_embeddings[i]
-
-            if self._metadata_field and not self.enable_dynamic_field:
-                entity_dict[self._metadata_field] = metadata
-            else:
-                for key, value in metadata.items():
-                    # if not enable_dynamic_field, skip fields not in the collection.
-                    if not self.enable_dynamic_field and key not in self.fields:
-                        continue
-                    # If enable_dynamic_field, all fields are allowed.
-                    entity_dict[key] = value
-
-            insert_list.append(entity_dict)
+        insert_list = self._prepare_insert_list(
+            texts=texts,
+            embeddings=embeddings,
+            metadatas=metadatas,
+            ids=ids,
+        )
 
         # Total insert count
         total_count = len(insert_list)
@@ -2351,23 +2407,9 @@ class Milvus(VectorStore):
                 )
                 pks.extend(res["ids"])
             except MilvusException as e:
-                first_entity = {}
-                if batch_insert_list:
-                    first_entity = batch_insert_list[0]
-                log_entity = {}
-                for k, v in first_entity.items():
-                    if isinstance(v, list) and len(v) > 10:
-                        log_entity[k] = f"{v[:10]}... (truncated, total len: {len(v)})"
-                    else:
-                        log_entity[k] = v
-                logger.error(
-                    "Failed to insert batch starting at entity: %s/%s. "
-                    "First entity data: %s",
-                    i + 1,
-                    total_count,
-                    log_entity,
+                self._handle_batch_operation_exception(
+                    e, batch_insert_list, i, total_count, "insert"
                 )
-                raise e
         return pks
 
     async def _acollection_search(
@@ -3002,34 +3044,74 @@ class Milvus(VectorStore):
         self,
         ids: Optional[List[str]] = None,
         documents: List[Document] | None = None,
+        batch_size: int = 1000,
+        timeout: Optional[float] = None,
         **kwargs: Any,
-    ) -> List[str] | None:
-        """Async update/Insert documents to the vectorstore.
+    ) -> None:
+        """Update/Insert documents to the vectorstore asynchronously.
 
         Args:
-            ids: IDs to update - Let's call get_pks to get ids with expression \n
+            ids: IDs to update - Let's call aget_pks to get ids with expression
             documents (List[Document]): Documents to add to the vectorstore.
-
-        Returns:
-            List[str]: IDs of the added texts.
+            batch_size (int, optional): Batch size to use for upsert.
+                Defaults to 1000.
+            timeout (Optional[float]): Timeout for each batch upsert. Defaults
+                to None.
+            **kwargs: Other parameters in Milvus upsert api.
         """
 
         if documents is None or len(documents) == 0:
             logger.debug("No documents to upsert.")
-            return None
+            return
 
-        if ids is not None and len(ids):
+        if not ids:
+            await self.aadd_documents(documents=documents, **kwargs)
+            return
+
+        assert len(set(ids)) == len(
+            documents
+        ), "Different lengths of documents and unique ids are provided."
+
+        embeddings_functions: List[EmbeddingType] = self._as_list(self.embedding_func)
+        embeddings: List = []
+        texts = [doc.page_content for doc in documents]
+        metadatas = [doc.metadata for doc in documents]
+        for embedding_func in embeddings_functions:
             try:
-                await self.adelete(ids=ids)
-            except MilvusException:
-                pass
-        try:
-            return await self.aadd_documents(documents=documents, **kwargs)
-        except MilvusException as exc:
-            logger.error(
-                "Failed to upsert entities: %s error: %s", self.collection_name, exc
-            )
-            raise exc
+                embeddings.append(await embedding_func.aembed_documents(texts))
+            except NotImplementedError:
+                embeddings.append([await embedding_func.aembed_query(x) for x in texts])
+
+        upsert_list = self._prepare_insert_list(
+            texts=texts,
+            embeddings=embeddings,
+            metadatas=metadatas,
+            ids=ids,
+            force_ids=True,
+        )
+
+        # Total upsert count
+        total_count = len(upsert_list)
+
+        assert isinstance(self.col, Collection)
+        for i in range(0, total_count, batch_size):
+            # Grab end index
+            end = min(i + batch_size, total_count)
+            batch_upsert_list = upsert_list[i:end]
+            # Upsert into the collection.
+            try:
+                timeout = self.timeout or timeout
+                await self.aclient.upsert(
+                    self.collection_name,
+                    batch_upsert_list,
+                    timeout=timeout,
+                    **kwargs,
+                )
+            except MilvusException as e:
+                self._handle_batch_operation_exception(
+                    e, batch_upsert_list, i, total_count, "upsert"
+                )
+        return
 
     async def asearch_by_metadata(
         self, expr: str, fields: Optional[List[str]] = None, limit: int = 10
