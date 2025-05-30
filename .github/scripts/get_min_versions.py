@@ -34,8 +34,33 @@ def get_min_version_from_toml(toml_path: str):
     with open(toml_path, "rb") as file:
         toml_data = tomllib.load(file)
 
-    # Get the dependencies from tool.poetry.dependencies
-    dependencies = toml_data["tool"]["poetry"]["dependencies"]
+    # Get the dependencies - check both Poetry and PEP 621 formats
+    dependencies = {}
+
+    # Try PEP 621 format first (project.dependencies)
+    if "project" in toml_data and "dependencies" in toml_data["project"]:
+        # PEP 621 format stores dependencies as a list of strings
+        deps_list = toml_data["project"]["dependencies"]
+        for dep in deps_list:
+            # Parse dependency string like "langchain-core>=0.2.38,<0.4"
+            if ">=" in dep:
+                name = dep.split(">=")[0].strip()
+                version = dep.split(">=")[1].strip()
+                dependencies[name] = version
+            elif "^" in dep:
+                name, version = dep.split("^")
+                dependencies[name.strip()] = f"^{version.strip()}"
+            elif "==" in dep:
+                name, version = dep.split("==")
+                dependencies[name.strip()] = version.strip()
+
+    # Fall back to Poetry format (tool.poetry.dependencies)
+    elif (
+        "tool" in toml_data
+        and "poetry" in toml_data["tool"]
+        and "dependencies" in toml_data["tool"]["poetry"]
+    ):
+        dependencies = toml_data["tool"]["poetry"]["dependencies"]
 
     # Initialize a dictionary to store the minimum versions
     min_versions = {}
