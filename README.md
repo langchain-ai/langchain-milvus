@@ -23,8 +23,7 @@ LangChain Milvus provides seamless integration between LangChain, a framework fo
 - **Multiple Vector Fields**: Support for multiple vector fields in a single collection
 - **Sparse Embeddings**: Support for sparse vector embeddings
 - **Built-in Functions**: Support for Milvus built-in functions like BM25
-
-
+- **Async Support**: Full support for async operations and APIs
 
 ## Installation
 
