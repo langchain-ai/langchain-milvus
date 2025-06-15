@@ -373,6 +373,11 @@ class Milvus(VectorStore):
         # Create the connection to the server
         if connection_args is None:
             connection_args = DEFAULT_MILVUS_CONNECTION
+          
+        if "host" in connection_args:
+            uri = f"http://{connection_args['host']}:{connection_args.get('port', 19530)}"
+            connection_args = {"uri": uri}
+            
         self._milvus_client = MilvusClient(
             **connection_args,
         )
