@@ -412,8 +412,7 @@ class Milvus(VectorStore):
                 self.col.set_properties(self.collection_properties)
         # If need to drop old, drop it
         if drop_old and isinstance(self.col, Collection):
-            self.col.drop()
-            self.col = None
+            self.drop()
 
         # Initialize the vector store
         self._init(
@@ -421,6 +420,7 @@ class Milvus(VectorStore):
             replica_number=replica_number,
             timeout=timeout,
         )
+
 
     def _check_vector_field(
         self,
@@ -2003,6 +2003,16 @@ class Milvus(VectorStore):
             )
             return False
 
+    def drop(self) -> None:
+        """Delete all the content in the index, by dropping the (only) collection."""
+        if self.col is not None:
+            self.col.drop()
+            self.col = None
+        else:
+            logger.warning(
+                "Collection %s does not exist, nothing to drop.", self.collection_name
+            )
+
     @classmethod
     def from_texts(
         cls,
@@ -2287,6 +2297,10 @@ class Milvus(VectorStore):
         # Default to retrieving all fields if none are provided
         if fields is None:
             fields = self.fields
+
+        # Ensure the text field is included in the output fields
+        if self._text_field not in fields:
+            fields.append(self._text_field)
 
         try:
             results = self.client.query(
