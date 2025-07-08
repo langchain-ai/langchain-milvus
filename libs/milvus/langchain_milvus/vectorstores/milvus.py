@@ -2288,6 +2288,10 @@ class Milvus(VectorStore):
         if fields is None:
             fields = self.fields
 
+        # Ensure the text field is included in the output fields
+        if self._text_field not in fields:
+            fields.append(self._text_field)
+
         try:
             results = self.client.query(
                 self.collection_name,
