@@ -421,7 +421,6 @@ class Milvus(VectorStore):
             timeout=timeout,
         )
 
-
     def _check_vector_field(
         self,
         vector_field: Union[str, List[str]],
@@ -3228,6 +3227,10 @@ class Milvus(VectorStore):
         # Default to retrieving all fields if none are provided
         if fields is None:
             fields = self.fields
+
+        # Ensure the text field is included in the output fields
+        if self._text_field not in fields:
+            fields.append(self._text_field)
 
         try:
             results = await self.aclient.query(
