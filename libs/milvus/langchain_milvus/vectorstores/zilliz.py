@@ -75,8 +75,7 @@ class Zilliz(Milvus):
         import warnings
 
         warnings.warn(
-            "The Zilliz class will be deprecated in the future. "
-            "Please use the Milvus class instead.",
+            "The Zilliz class will be deprecated in the future. Please use the Milvus class instead.",
             DeprecationWarning,
             stacklevel=2,
         )
