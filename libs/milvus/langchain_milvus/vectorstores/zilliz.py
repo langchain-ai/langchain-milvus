@@ -50,8 +50,7 @@ class Zilliz(Milvus):
     https://docs.zilliz.com/reference/python/python/Connections-connect
 
     Example:
-        .. code-block:: python
-
+        ```python
         from langchain_milvus import Zilliz
         from langchain_openai import OpenAIEmbeddings
 
@@ -66,6 +65,7 @@ class Zilliz(Milvus):
             }
             drop_old: True,
         )
+        ```
 
     Raises:
         ValueError: If the pymilvus python package is not installed.
