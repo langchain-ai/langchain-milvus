@@ -152,11 +152,11 @@ class Milvus(VectorStore):
     """Milvus vector store integration.
 
     Setup:
-        Install ``langchain_milvus`` package:
+        Install `langchain_milvus` package:
 
-        .. code-block:: bash
-
-            pip install -qU  langchain_milvus
+        ```bash
+        pip install -qU  langchain_milvus
+        ```
 
     Key init args — indexing params:
         collection_name: str
@@ -171,91 +171,91 @@ class Milvus(VectorStore):
             Connection arguments.
 
     Instantiate:
-        .. code-block:: python
+        ```python
+        from langchain_milvus import Milvus
+        from langchain_openai import OpenAIEmbeddings
 
-            from langchain_milvus import Milvus
-            from langchain_openai import OpenAIEmbeddings
+        URI = "./milvus_example.db"
 
-            URI = "./milvus_example.db"
-
-            vector_store = Milvus(
-                embedding_function=OpenAIEmbeddings(),
-                connection_args={"uri": URI},
-            )
+        vector_store = Milvus(
+            embedding_function=OpenAIEmbeddings(),
+            connection_args={"uri": URI},
+        )
+        ```
 
     Add Documents:
-        .. code-block:: python
+        ```python
+        from langchain_core.documents import Document
 
-            from langchain_core.documents import Document
+        document_1 = Document(page_content="foo", metadata={"baz": "bar"})
+        document_2 = Document(page_content="thud", metadata={"baz": "baz"})
+        document_3 = Document(page_content="i will be deleted :(", metadata={"baz": "qux"})
 
-            document_1 = Document(page_content="foo", metadata={"baz": "bar"})
-            document_2 = Document(page_content="thud", metadata={"baz": "baz"})
-            document_3 = Document(page_content="i will be deleted :(", metadata={"baz": "qux"})
-
-            documents = [document_1, document_2, document_3]
-            ids = ["1", "2", "3"]
-            vector_store.add_documents(documents=documents, ids=ids)
+        documents = [document_1, document_2, document_3]
+        ids = ["1", "2", "3"]
+        vector_store.add_documents(documents=documents, ids=ids)
+        ```
 
     Delete Documents:
-        .. code-block:: python
-
-            vector_store.delete(ids=["3"])
+        ```python
+        vector_store.delete(ids=["3"])
+        ```
 
     Search:
-        .. code-block:: python
+        ```python
+        results = vector_store.similarity_search(query="thud",k=1)
+        for doc in results:
+            print(f"* {doc.page_content} [{doc.metadata}]")
+        ```
 
-            results = vector_store.similarity_search(query="thud",k=1)
-            for doc in results:
-                print(f"* {doc.page_content} [{doc.metadata}]")
-
-        .. code-block:: python
-
-            * thud [{'baz': 'baz', 'pk': '2'}]
+        ```python
+        * thud [{'baz': 'baz', 'pk': '2'}]
+        ```
 
     Search with score:
-        .. code-block:: python
+        ```python
+        results = vector_store.similarity_search_with_score(query="qux",k=1)
+        for doc, score in results:
+            print(f"* [SIM={score:3f}] {doc.page_content} [{doc.metadata}]")
+        ```
 
-            results = vector_store.similarity_search_with_score(query="qux",k=1)
-            for doc, score in results:
-                print(f"* [SIM={score:3f}] {doc.page_content} [{doc.metadata}]")
-
-        .. code-block:: python
-
-            * [SIM=0.335463] foo [{'baz': 'bar', 'pk': '1'}]
+        ```python
+        * [SIM=0.335463] foo [{'baz': 'bar', 'pk': '1'}]
+        ```
 
     Async:
-        .. code-block:: python
+        ```python
+        # add documents
+        # await vector_store.aadd_documents(documents=documents, ids=ids)
 
-            # add documents
-            # await vector_store.aadd_documents(documents=documents, ids=ids)
+        # delete documents
+        # await vector_store.adelete(ids=["3"])
 
-            # delete documents
-            # await vector_store.adelete(ids=["3"])
+        # search
+        # results = vector_store.asimilarity_search(query="thud",k=1)
 
-            # search
-            # results = vector_store.asimilarity_search(query="thud",k=1)
+        # search with score
+        results = await vector_store.asimilarity_search_with_score(query="qux",k=1)
+        for doc,score in results:
+            print(f"* [SIM={score:3f}] {doc.page_content} [{doc.metadata}]")
+        ```
 
-            # search with score
-            results = await vector_store.asimilarity_search_with_score(query="qux",k=1)
-            for doc,score in results:
-                print(f"* [SIM={score:3f}] {doc.page_content} [{doc.metadata}]")
-
-        .. code-block:: python
-
-            * [SIM=0.335463] foo [{'baz': 'bar', 'pk': '1'}]
+        ```python
+        * [SIM=0.335463] foo [{'baz': 'bar', 'pk': '1'}]
+        ```
 
     Use as Retriever:
-        .. code-block:: python
+        ```python
+        retriever = vector_store.as_retriever(
+            search_type="mmr",
+            search_kwargs={"k": 1, "fetch_k": 2, "lambda_mult": 0.5},
+        )
+        retriever.invoke("thud")
+        ```
 
-            retriever = vector_store.as_retriever(
-                search_type="mmr",
-                search_kwargs={"k": 1, "fetch_k": 2, "lambda_mult": 0.5},
-            )
-            retriever.invoke("thud")
-
-        .. code-block:: python
-
-            [Document(metadata={'baz': 'baz', 'pk': '2'}, page_content='thud')]
+        ```python
+        [Document(metadata={'baz': 'baz', 'pk': '2'}, page_content='thud')]
+        ```
 
     """  # noqa: E501
 
