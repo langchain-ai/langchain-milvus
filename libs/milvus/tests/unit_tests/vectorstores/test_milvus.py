@@ -41,8 +41,6 @@ class TestMilvusLite(TestMilvusBase):
     def test_milvus_enable_dynamic_field(self) -> None:
         return super().test_milvus_enable_dynamic_field()
 
-    @pytest.mark.skip(
-        reason="Milvus-Lite doesn't support built-in full-text search yet"
-    )
+    @pytest.mark.skip(reason="Milvus-Lite doesn't support built-in full-text search yet")
     def test_milvus_builtin_bm25_function(self, enable_dynamic_field: bool) -> None:
         return super().test_milvus_builtin_bm25_function(enable_dynamic_field)

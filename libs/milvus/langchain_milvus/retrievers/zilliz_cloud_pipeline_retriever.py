@@ -50,13 +50,8 @@ class ZillizCloudPipelineRetriever(BaseRetriever):
         if "search" in self.pipeline_ids:
             search_pipe_id = self.pipeline_ids.get("search")
         else:
-            raise Exception(
-                "A search pipeline id must be provided in pipeline_ids to "
-                "get relevant documents."
-            )
-        domain = (
-            f"https://controller.api.{self.cloud_region}.zillizcloud.com/v1/pipelines"
-        )
+            raise Exception("A search pipeline id must be provided in pipeline_ids to get relevant documents.")
+        domain = f"https://controller.api.{self.cloud_region}.zillizcloud.com/v1/pipelines"
         headers = {
             "Authorization": f"Bearer {self.token}",
             "Accept": "application/json",
@@ -84,17 +79,13 @@ class ZillizCloudPipelineRetriever(BaseRetriever):
         search_results = response_data["result"]
         return [
             Document(
-                page_content=result.pop("text")
-                if "text" in result
-                else result.pop("chunk_text"),
+                page_content=result.pop("text") if "text" in result else result.pop("chunk_text"),
                 metadata=result,
             )
             for result in search_results
         ]
 
-    def add_texts(
-        self, texts: List[str], metadata: Optional[Dict[str, Any]] = None
-    ) -> Dict:
+    def add_texts(self, texts: List[str], metadata: Optional[Dict[str, Any]] = None) -> Dict:
         """
         Add documents to store.
         Only supported by a text ingestion pipeline in Zilliz Cloud.
@@ -108,13 +99,8 @@ class ZillizCloudPipelineRetriever(BaseRetriever):
         if "ingestion" in self.pipeline_ids:
             ingeset_pipe_id = self.pipeline_ids.get("ingestion")
         else:
-            raise Exception(
-                "An ingestion pipeline id must be provided in pipeline_ids to"
-                " add documents."
-            )
-        domain = (
-            f"https://controller.api.{self.cloud_region}.zillizcloud.com/v1/pipelines"
-        )
+            raise Exception("An ingestion pipeline id must be provided in pipeline_ids to add documents.")
+        domain = f"https://controller.api.{self.cloud_region}.zillizcloud.com/v1/pipelines"
         headers = {
             "Authorization": f"Bearer {self.token}",
             "Accept": "application/json",
@@ -135,9 +121,7 @@ class ZillizCloudPipelineRetriever(BaseRetriever):
         response_data = response_dict["data"]
         return response_data
 
-    def add_doc_url(
-        self, doc_url: str, metadata: Optional[Dict[str, Any]] = None
-    ) -> Dict:
+    def add_doc_url(self, doc_url: str, metadata: Optional[Dict[str, Any]] = None) -> Dict:
         """
         Add a document from url.
         Only supported by a document ingestion pipeline in Zilliz Cloud.
@@ -151,13 +135,8 @@ class ZillizCloudPipelineRetriever(BaseRetriever):
         if "ingestion" in self.pipeline_ids:
             ingest_pipe_id = self.pipeline_ids.get("ingestion")
         else:
-            raise Exception(
-                "An ingestion pipeline id must be provided in pipeline_ids to "
-                "add documents."
-            )
-        domain = (
-            f"https://controller.api.{self.cloud_region}.zillizcloud.com/v1/pipelines"
-        )
+            raise Exception("An ingestion pipeline id must be provided in pipeline_ids to add documents.")
+        domain = f"https://controller.api.{self.cloud_region}.zillizcloud.com/v1/pipelines"
         headers = {
             "Authorization": f"Bearer {self.token}",
             "Accept": "application/json",
@@ -189,13 +168,8 @@ class ZillizCloudPipelineRetriever(BaseRetriever):
         if "deletion" in self.pipeline_ids:
             deletion_pipe_id = self.pipeline_ids.get("deletion")
         else:
-            raise Exception(
-                "A deletion pipeline id must be provided in pipeline_ids to "
-                "add documents."
-            )
-        domain = (
-            f"https://controller.api.{self.cloud_region}.zillizcloud.com/v1/pipelines"
-        )
+            raise Exception("A deletion pipeline id must be provided in pipeline_ids to add documents.")
+        domain = f"https://controller.api.{self.cloud_region}.zillizcloud.com/v1/pipelines"
         headers = {
             "Authorization": f"Bearer {self.token}",
             "Accept": "application/json",

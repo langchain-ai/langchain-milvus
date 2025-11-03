@@ -90,29 +90,21 @@ class TestMilvusBase(ABC):
             auto_id=True,
         )
 
-        docsearch.add_embeddings(
-            texts=fake_texts, embeddings=embed_func.embed_documents(fake_texts)
-        )  # type: ignore[list-item]
+        docsearch.add_embeddings(texts=fake_texts, embeddings=embed_func.embed_documents(fake_texts))  # type: ignore[list-item]
         output = docsearch.similarity_search("foo", k=1)
         assert_docs_equal_without_pk(output, [Document(page_content="foo")])
 
     def test_milvus_vector_search(self) -> None:
         """Test end to end construction and search by vector."""
         docsearch = self._milvus_from_texts()
-        output = docsearch.similarity_search_by_vector(
-            FakeEmbeddings().embed_query("foo"), k=1
-        )
+        output = docsearch.similarity_search_by_vector(FakeEmbeddings().embed_query("foo"), k=1)
         assert_docs_equal_without_pk(output, [Document(page_content="foo")])
 
     def test_milvus_with_metadata(self) -> None:
         """Test with metadata"""
-        docsearch = self._milvus_from_texts(
-            metadatas=[{"label": "test"}] * len(fake_texts)
-        )
+        docsearch = self._milvus_from_texts(metadatas=[{"label": "test"}] * len(fake_texts))
         output = docsearch.similarity_search("foo", k=1)
-        assert_docs_equal_without_pk(
-            output, [Document(page_content="foo", metadata={"label": "test"})]
-        )
+        assert_docs_equal_without_pk(output, [Document(page_content="foo", metadata={"label": "test"})])
 
     def test_milvus_with_id(self) -> None:
         """Test with ids"""
@@ -164,9 +156,7 @@ class TestMilvusBase(ABC):
         """Test end to end construction and MRR search with enabling dynamic field."""
         texts = ["foo", "bar", "baz"]
         metadatas = [{"page": i} for i in range(len(texts))]
-        docsearch = self._milvus_from_texts(
-            metadatas=metadatas, enable_dynamic_field=True
-        )
+        docsearch = self._milvus_from_texts(metadatas=metadatas, enable_dynamic_field=True)
         output = docsearch.max_marginal_relevance_search("foo", k=2, fetch_k=3)
         assert_docs_equal_without_pk(
             output,
@@ -271,9 +261,7 @@ class TestMilvusBase(ABC):
         ]
         docsearch.upsert(pks, documents)
         expr = "id in [1,3]"
-        res = docsearch.client.query(
-            collection_name=docsearch.collection_name, filter=expr
-        )
+        res = docsearch.client.query(collection_name=docsearch.collection_name, filter=expr)
         assert len(res) == 2
         assert res[0]["id"] == 1
         assert res[1]["id"] == 3
@@ -282,9 +270,7 @@ class TestMilvusBase(ABC):
         """Test end to end construction and enable dynamic field"""
         texts = ["foo", "bar", "baz"]
         metadatas = [{"id": i} for i in range(len(texts))]
-        docsearch = self._milvus_from_texts(
-            metadatas=metadatas, enable_dynamic_field=True
-        )
+        docsearch = self._milvus_from_texts(metadatas=metadatas, enable_dynamic_field=True)
         output = docsearch.similarity_search("foo", k=10)
         assert len(output) == 3
 
@@ -305,9 +291,7 @@ class TestMilvusBase(ABC):
         """Test end to end construction and disable dynamic field"""
         texts = ["foo", "bar", "baz"]
         metadatas = [{"id": i} for i in range(len(texts))]
-        docsearch = self._milvus_from_texts(
-            metadatas=metadatas, enable_dynamic_field=False
-        )
+        docsearch = self._milvus_from_texts(metadatas=metadatas, enable_dynamic_field=False)
         output = docsearch.similarity_search("foo", k=10)
         assert len(output) == 3
         # ["pk", "text", "vector", "id"]
@@ -338,9 +322,7 @@ class TestMilvusBase(ABC):
         """Test end to end construction and use metadata field"""
         texts = ["foo", "bar", "baz"]
         metadatas = [{"id": i} for i in range(len(texts))]
-        docsearch = self._milvus_from_texts(
-            metadatas=metadatas, metadata_field="metadata"
-        )
+        docsearch = self._milvus_from_texts(metadatas=metadatas, metadata_field="metadata")
         output = docsearch.similarity_search("foo", k=10)
         assert len(output) == 3
 
@@ -429,9 +411,7 @@ class TestMilvusBase(ABC):
         from pymilvus import DataType
 
         texts = ["foo", "bar", "baz"]
-        metadatas = [
-            {"id": i, "array_field": [i, i + 1, i + 2]} for i in range(len(texts))
-        ]
+        metadatas = [{"id": i, "array_field": [i, i + 1, i + 2]} for i in range(len(texts))]
 
         # Manually specify metadata schema, including an array_field.
         # If some fields are not specified, it will automatically infer their schemas.
@@ -450,9 +430,7 @@ class TestMilvusBase(ABC):
         )
         output = docsearch.similarity_search("foo", k=10, expr="array_field[0] < 2")
         assert len(output) == 2
-        output = docsearch.similarity_search(
-            "foo", k=10, expr="ARRAY_CONTAINS(array_field, 3)"
-        )
+        output = docsearch.similarity_search("foo", k=10, expr="ARRAY_CONTAINS(array_field, 3)")
         assert len(output) == 2
 
         # If we use enable_dynamic_field,
@@ -463,9 +441,7 @@ class TestMilvusBase(ABC):
         )
         output = docsearch.similarity_search("foo", k=10, expr="array_field[0] < 2")
         assert len(output) == 2
-        output = docsearch.similarity_search(
-            "foo", k=10, expr="ARRAY_CONTAINS(array_field, 3)"
-        )
+        output = docsearch.similarity_search("foo", k=10, expr="ARRAY_CONTAINS(array_field, 3)")
         assert len(output) == 2
 
     def test_milvus_vector_field(self) -> None:
@@ -535,14 +511,8 @@ class TestMilvusBase(ABC):
         )
 
         assert docsearch.col is not None
-        assert (
-            isinstance(docsearch.index_params, list)
-            and len(docsearch.index_params) == 2
-        )
-        assert (
-            isinstance(docsearch.search_params, list)
-            and len(docsearch.search_params) == 2
-        )
+        assert isinstance(docsearch.index_params, list) and len(docsearch.index_params) == 2
+        assert isinstance(docsearch.search_params, list) and len(docsearch.search_params) == 2
 
         # The order of the indexes is not guaranteed, so we need to check
         index_list = docsearch.col.indexes
@@ -580,9 +550,7 @@ class TestMilvusBase(ABC):
         # to the embeddings of the *first* document
         embedding_1 = FixedValuesEmbeddings(documents_base_val=0.0, query_val=float(0))
         # Force the query to always be identical to the *last* document's embeddings
-        embedding_2 = FixedValuesEmbeddings(
-            documents_base_val=0.0, query_val=float(len(fake_texts))
-        )
+        embedding_2 = FixedValuesEmbeddings(documents_base_val=0.0, query_val=float(len(fake_texts)))
         docsearch = Milvus.from_texts(
             embedding=[embedding_1, embedding_2],
             texts=fake_texts,
@@ -611,9 +579,7 @@ class TestMilvusBase(ABC):
 
     @pytest.mark.parametrize("metric_type", ["L2", "IP", "COSINE"])
     @pytest.mark.parametrize("score_threshold", [0.5001, 0.4999])
-    def test_milvus_similarity_search_with_relevance_scores(
-        self, metric_type: str, score_threshold: float
-    ) -> None:
+    def test_milvus_similarity_search_with_relevance_scores(self, metric_type: str, score_threshold: float) -> None:
         """Test similarity search with relevance scores"""
         docsearch = Milvus(
             embedding_function=DirectionEmbeddings(),
@@ -662,13 +628,9 @@ class TestMilvusBase(ABC):
             docsearch.add_texts(fake_texts, metadatas=metadatas)
             output = docsearch.similarity_search("foo", k=1)
             if enable_dynamic_field:
-                assert_docs_equal_without_pk(
-                    output, [Document(page_content=fake_texts[0], metadata={"page": 0})]
-                )
+                assert_docs_equal_without_pk(output, [Document(page_content=fake_texts[0], metadata={"page": 0})])
             else:
-                assert_docs_equal_without_pk(
-                    output, [Document(page_content=fake_texts[0])]
-                )
+                assert_docs_equal_without_pk(output, [Document(page_content=fake_texts[0])])
 
         # BM25 only
         docsearch1 = Milvus(

@@ -11,8 +11,13 @@ readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10,<4.0"
 dependencies = [
-    "pymilvus>=2.5.7,<3.0",
-    "langchain-core>=1.0.0",
+    "pymilvus>=2.6.0,<3.0",
+    "langchain-core>=0.2.38,<0.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
 ]
 
 [project.urls]
@@ -22,9 +27,19 @@ Repository = "https://github.com/langchain-ai/langchain-milvus"
 
 [tool.ruff]
 select = ["E", "F", "I", "T201"]
+line-length = 120
+indent-width = 4
+target-version = "py312"
+extend-include = ["*.pyi"]
+
+[tool.ruff.format]
+indent-style = "space"
+line-ending = "auto"
+exclude = ['^/build/']
 
 [tool.mypy]
 disallow_untyped_defs = "True"
+
 [[tool.mypy.overrides]]
 module = ["pymilvus"]
 ignore_missing_imports = "True"
@@ -66,13 +81,13 @@ pytest-asyncio = "^0.21.1"
 "pymilvus.model" = "^0.3.1"
 milvus-lite = "^2.5.1"
 onnxruntime = "<= 1.19.2"  # the higher version of onnxruntime can not be found in the CI installation
-langchain-core = { git = "https://github.com/langchain-ai/langchain.git", subdirectory = "libs/core" }
+langchain-core = "< 0.4"
 
 [tool.poetry.group.codespell.dependencies]
 codespell = "^2.2.0"
 
 [tool.poetry.group.test_integration.dependencies]
-"pymilvus.model" = "^0.3.1"
+pymilvus-model = "^0.3.1"
 onnxruntime = "<= 1.19.2"
 
 [tool.poetry.group.lint.dependencies]

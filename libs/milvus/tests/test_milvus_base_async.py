@@ -64,29 +64,21 @@ class TestMilvusBaseAsync(ABC):
             consistency_level="Strong",
             auto_id=True,
         )
-        await docsearch.aadd_embeddings(
-            texts=fake_texts, embeddings=embed_func.embed_documents(fake_texts)
-        )
+        await docsearch.aadd_embeddings(texts=fake_texts, embeddings=embed_func.embed_documents(fake_texts))
         output = await docsearch.asimilarity_search("foo", k=1)
         assert_docs_equal_without_pk(output, [Document(page_content="foo")])
 
     @pytest.mark.asyncio
     async def test_milvus_vector_search(self) -> None:
         docsearch = await self._milvus_from_texts()
-        output = await docsearch.asimilarity_search_by_vector(
-            FakeEmbeddings().embed_query("foo"), k=1
-        )
+        output = await docsearch.asimilarity_search_by_vector(FakeEmbeddings().embed_query("foo"), k=1)
         assert_docs_equal_without_pk(output, [Document(page_content="foo")])
 
     @pytest.mark.asyncio
     async def test_milvus_with_metadata(self) -> None:
-        docsearch = await self._milvus_from_texts(
-            metadatas=[{"label": "test"}] * len(fake_texts)
-        )
+        docsearch = await self._milvus_from_texts(metadatas=[{"label": "test"}] * len(fake_texts))
         output = await docsearch.asimilarity_search("foo", k=1)
-        assert_docs_equal_without_pk(
-            output, [Document(page_content="foo", metadata={"label": "test"})]
-        )
+        assert_docs_equal_without_pk(output, [Document(page_content="foo", metadata={"label": "test"})])
 
     @pytest.mark.asyncio
     async def test_milvus_with_id(self) -> None:
@@ -142,9 +134,7 @@ class TestMilvusBaseAsync(ABC):
         """Test end to end construction and MRR search with enabling dynamic field."""
         texts = ["foo", "bar", "baz"]
         metadatas = [{"page": i} for i in range(len(texts))]
-        docsearch = await self._milvus_from_texts(
-            metadatas=metadatas, enable_dynamic_field=True
-        )
+        docsearch = await self._milvus_from_texts(metadatas=metadatas, enable_dynamic_field=True)
         output = await docsearch.amax_marginal_relevance_search("foo", k=2, fetch_k=3)
         assert_docs_equal_without_pk(
             output,
@@ -217,9 +207,7 @@ class TestMilvusBaseAsync(ABC):
         )
 
         # Search for all songs by IU
-        output = await docsearch.asearch_by_metadata(
-            expr="SingerName == 'IU'", limit=10
-        )
+        output = await docsearch.asearch_by_metadata(expr="SingerName == 'IU'", limit=10)
         assert len(output) == 2  # Expecting 2 results for IU
         assert all(doc.metadata["SingerName"] == "IU" for doc in output)
 
@@ -257,9 +245,7 @@ class TestMilvusBaseAsync(ABC):
         ]
         await docsearch.aupsert(pks, documents)
         expr = "id in [1,3]"
-        res = docsearch.client.query(
-            collection_name=docsearch.collection_name, filter=expr
-        )
+        res = docsearch.client.query(collection_name=docsearch.collection_name, filter=expr)
         assert len(res) == 2
         assert res[0]["id"] == 1
         assert res[1]["id"] == 3
@@ -269,9 +255,7 @@ class TestMilvusBaseAsync(ABC):
         """Test end to end construction and enable dynamic field"""
         texts = ["foo", "bar", "baz"]
         metadatas = [{"id": i} for i in range(len(texts))]
-        docsearch = await self._milvus_from_texts(
-            metadatas=metadatas, enable_dynamic_field=True
-        )
+        docsearch = await self._milvus_from_texts(metadatas=metadatas, enable_dynamic_field=True)
         output = await docsearch.asimilarity_search("foo", k=10)
         assert len(output) == 3
 
@@ -293,9 +277,7 @@ class TestMilvusBaseAsync(ABC):
         """Test end to end construction and disable dynamic field"""
         texts = ["foo", "bar", "baz"]
         metadatas = [{"id": i} for i in range(len(texts))]
-        docsearch = await self._milvus_from_texts(
-            metadatas=metadatas, enable_dynamic_field=False
-        )
+        docsearch = await self._milvus_from_texts(metadatas=metadatas, enable_dynamic_field=False)
         output = await docsearch.asimilarity_search("foo", k=10)
         assert len(output) == 3
         # ["pk", "text", "vector", "id"]
@@ -327,9 +309,7 @@ class TestMilvusBaseAsync(ABC):
         """Test end to end construction and use metadata field"""
         texts = ["foo", "bar", "baz"]
         metadatas = [{"id": i} for i in range(len(texts))]
-        docsearch = await self._milvus_from_texts(
-            metadatas=metadatas, metadata_field="metadata"
-        )
+        docsearch = await self._milvus_from_texts(metadatas=metadatas, metadata_field="metadata")
         output = await docsearch.asimilarity_search("foo", k=10)
         assert len(output) == 3
 
@@ -415,9 +395,7 @@ class TestMilvusBaseAsync(ABC):
         from pymilvus import DataType
 
         texts = ["foo", "bar", "baz"]
-        metadatas = [
-            {"id": i, "array_field": [i, i + 1, i + 2]} for i in range(len(texts))
-        ]
+        metadatas = [{"id": i, "array_field": [i, i + 1, i + 2]} for i in range(len(texts))]
 
         # Manually specify metadata schema, including an array_field.
         # If some fields are not specified, it will automatically infer their schemas.
@@ -431,13 +409,9 @@ class TestMilvusBaseAsync(ABC):
                 ),
             },
         )
-        output = await docsearch.asimilarity_search(
-            "foo", k=10, expr="array_field[0] < 2"
-        )
+        output = await docsearch.asimilarity_search("foo", k=10, expr="array_field[0] < 2")
         assert len(output) == 2
-        output = await docsearch.asimilarity_search(
-            "foo", k=10, expr="ARRAY_CONTAINS(array_field, 3)"
-        )
+        output = await docsearch.asimilarity_search("foo", k=10, expr="ARRAY_CONTAINS(array_field, 3)")
         assert len(output) == 2
 
         # If we use enable_dynamic_field,
@@ -446,13 +420,9 @@ class TestMilvusBaseAsync(ABC):
             enable_dynamic_field=True,
             metadatas=metadatas,
         )
-        output = await docsearch.asimilarity_search(
-            "foo", k=10, expr="array_field[0] < 2"
-        )
+        output = await docsearch.asimilarity_search("foo", k=10, expr="array_field[0] < 2")
         assert len(output) == 2
-        output = await docsearch.asimilarity_search(
-            "foo", k=10, expr="ARRAY_CONTAINS(array_field, 3)"
-        )
+        output = await docsearch.asimilarity_search("foo", k=10, expr="ARRAY_CONTAINS(array_field, 3)")
         assert len(output) == 2
 
     @pytest.mark.asyncio
@@ -525,14 +495,8 @@ class TestMilvusBaseAsync(ABC):
         )
 
         assert docsearch.col is not None
-        assert (
-            isinstance(docsearch.index_params, list)
-            and len(docsearch.index_params) == 2
-        )
-        assert (
-            isinstance(docsearch.search_params, list)
-            and len(docsearch.search_params) == 2
-        )
+        assert isinstance(docsearch.index_params, list) and len(docsearch.index_params) == 2
+        assert isinstance(docsearch.search_params, list) and len(docsearch.search_params) == 2
 
         # The order of the indexes is not guaranteed, so we need to check
         index_list = docsearch.col.indexes
@@ -571,9 +535,7 @@ class TestMilvusBaseAsync(ABC):
         # to the embeddings of the *first* document
         embedding_1 = FixedValuesEmbeddings(documents_base_val=0.0, query_val=float(0))
         # Force the query to always be identical to the *last* document's embeddings
-        embedding_2 = FixedValuesEmbeddings(
-            documents_base_val=0.0, query_val=float(len(fake_texts))
-        )
+        embedding_2 = FixedValuesEmbeddings(documents_base_val=0.0, query_val=float(len(fake_texts)))
         docsearch = await Milvus.afrom_texts(
             embedding=[embedding_1, embedding_2],
             texts=fake_texts,
@@ -642,9 +604,7 @@ class TestMilvusBaseAsync(ABC):
 
     @pytest.mark.parametrize("enable_dynamic_field", [True, False])
     @pytest.mark.asyncio
-    async def test_milvus_builtin_bm25_function(
-        self, enable_dynamic_field: bool
-    ) -> None:
+    async def test_milvus_builtin_bm25_function(self, enable_dynamic_field: bool) -> None:
         """
         Test builtin BM25 function
         """
@@ -657,13 +617,9 @@ class TestMilvusBaseAsync(ABC):
             await docsearch.aadd_texts(fake_texts, metadatas=metadatas)
             output = await docsearch.asimilarity_search("foo", k=1)
             if enable_dynamic_field:
-                assert_docs_equal_without_pk(
-                    output, [Document(page_content=fake_texts[0], metadata={"page": 0})]
-                )
+                assert_docs_equal_without_pk(output, [Document(page_content=fake_texts[0], metadata={"page": 0})])
             else:
-                assert_docs_equal_without_pk(
-                    output, [Document(page_content=fake_texts[0])]
-                )
+                assert_docs_equal_without_pk(output, [Document(page_content=fake_texts[0])])
 
         # BM25 only
         docsearch1 = Milvus(
