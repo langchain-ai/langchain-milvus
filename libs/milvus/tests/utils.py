@@ -50,9 +50,7 @@ class FakeFp16Embeddings(Embeddings):
         Embeddings are identical to embed_documents(texts)[0].
         Distance to each text will be that text's index,
         as it was passed to embed_documents."""
-        return np.array(
-            [(1 / 9) * d for d in range(9)] + [float(0.0)], dtype=np.float16
-        )
+        return np.array([(1 / 9) * d for d in range(9)] + [float(0.0)], dtype=np.float16)
 
     async def aembed_query(self, text: str):  # type: ignore[no-untyped-def]
         return self.embed_query(text)
@@ -92,9 +90,7 @@ class DirectionEmbeddings(Embeddings):
         return self._get_embedding(text)
 
 
-def assert_docs_equal_without_pk(
-    docs1: List[Document], docs2: List[Document], pk_field: str = "pk"
-) -> None:
+def assert_docs_equal_without_pk(docs1: List[Document], docs2: List[Document], pk_field: str = "pk") -> None:
     """Assert two lists of Documents are equal, ignoring the primary key field."""
     assert len(docs1) == len(docs2)
     for doc1, doc2 in zip(docs1, docs2):

@@ -1,4 +1,5 @@
 import uuid
+import warnings
 from abc import ABC
 from typing import Any, Dict, List, Optional, Union
 
@@ -72,14 +73,18 @@ class BM25BuiltInFunction(BaseMilvusBuiltInFunction):
             output_field_names=output_field_names,
             function_type=FunctionType.BM25,
         )
-        self.analyzer_params: Optional[Dict[Any, Any]] = analyzer_params
+        self.analyzer_params: Optional[Dict[str, Any]] = analyzer_params
         self.enable_match = enable_match
 
     def get_input_field_schema_kwargs(self) -> dict:
-        field_schema_kwargs: Dict[Any, Any] = {
-            "enable_analyzer": True,
-            "enable_match": self.enable_match,
-        }
+        field_schema_kwargs: Dict[str, Any] = dict(enable_analyzer=True)
         if self.analyzer_params is not None:
-            field_schema_kwargs["analyzer_params"] = self.analyzer_params
+            key = "analyzer_params"
+            if self.analyzer_params.get("analyzers") is not None:
+                key = "multi_analyzer_params"
+                if self.enable_match:
+                    warnings.warn("multi analyzer now only support for bm25, `enable_match` will be reset to False")
+                    self.enable_match = False
+            field_schema_kwargs[key] = self.analyzer_params
+        field_schema_kwargs.setdefault("enable_match", self.enable_match)
         return field_schema_kwargs

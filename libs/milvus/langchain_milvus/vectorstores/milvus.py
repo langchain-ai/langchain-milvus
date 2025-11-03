@@ -76,8 +76,7 @@ def cosine_similarity(X: Matrix, Y: Matrix) -> np.ndarray:
     Y = np.array(Y)
     if X.shape[1] != Y.shape[1]:
         raise ValueError(
-            f"Number of columns in X and Y must be the same. X has shape {X.shape} "
-            f"and Y has shape {Y.shape}."
+            f"Number of columns in X and Y must be the same. X has shape {X.shape} and Y has shape {Y.shape}."
         )
     try:
         import simsimd as simd
@@ -133,9 +132,7 @@ def maximal_marginal_relevance(
             if i in idxs:
                 continue
             redundant_score = max(similarity_to_selected[i])
-            equation_score = (
-                lambda_mult * query_score - (1 - lambda_mult) * redundant_score
-            )
+            equation_score = lambda_mult * query_score - (1 - lambda_mult) * redundant_score
             if equation_score > best_score:
                 best_score = equation_score
                 idx_to_add = i
@@ -285,9 +282,7 @@ class Milvus(VectorStore):
         num_shards: Optional[int] = None,
         vector_schema: Optional[Union[dict[str, Any], List[dict[str, Any]]]] = None,
         metadata_schema: Optional[dict[str, Any]] = None,
-        builtin_function: Optional[
-            Union[BaseMilvusBuiltInFunction, List[BaseMilvusBuiltInFunction]]
-        ] = None,
+        builtin_function: Optional[Union[BaseMilvusBuiltInFunction, List[BaseMilvusBuiltInFunction]]] = None,
     ):
         """Initialize the Milvus vector store."""
         # Default search params when one is not provided.
@@ -325,16 +320,12 @@ class Milvus(VectorStore):
         }
 
         if not embedding_function and not builtin_function:
-            raise ValueError(
-                "Either `embedding_function` or `builtin_function` should be provided."
-            )
+            raise ValueError("Either `embedding_function` or `builtin_function` should be provided.")
 
-        self.embedding_func: Optional[
-            Union[EmbeddingType, List[EmbeddingType]]
-        ] = self._from_list(embedding_function)
-        self.builtin_func: Optional[
-            Union[BaseMilvusBuiltInFunction, List[BaseMilvusBuiltInFunction]]
-        ] = self._from_list(builtin_function)
+        self.embedding_func: Optional[Union[EmbeddingType, List[EmbeddingType]]] = self._from_list(embedding_function)
+        self.builtin_func: Optional[Union[BaseMilvusBuiltInFunction, List[BaseMilvusBuiltInFunction]]] = (
+            self._from_list(builtin_function)
+        )
         self.collection_name = collection_name
         self.collection_description = collection_description
         self.collection_properties = collection_properties
@@ -357,9 +348,7 @@ class Milvus(VectorStore):
             )
         if enable_dynamic_field and metadata_field:
             metadata_field = None
-            logger.warning(
-                "When `enable_dynamic_field` is True, `metadata_field` is ignored."
-            )
+            logger.warning("When `enable_dynamic_field` is True, `metadata_field` is ignored.")
         self.enable_dynamic_field = enable_dynamic_field
         self._metadata_field = metadata_field
         self._partition_key_field = partition_key_field
@@ -430,19 +419,17 @@ class Milvus(VectorStore):
         Check the validity of vector_field and vector_schema,
         as well as the relationships with embedding_func and builtin_func.
         """
-        assert len(self._as_list(vector_field)) == len(
-            set(self._as_list(vector_field))
-        ), "Vector field names should be unique."
+        assert len(self._as_list(vector_field)) == len(set(self._as_list(vector_field))), (
+            "Vector field names should be unique."
+        )
 
         vector_fields_from_function = []
         for builtin_function in self._as_list(self.builtin_func):
-            vector_fields_from_function.extend(
-                self._as_list(builtin_function.output_field_names)
-            )
+            vector_fields_from_function.extend(self._as_list(builtin_function.output_field_names))
         # Check there are not overlapping fields
-        assert len(vector_fields_from_function) == len(
-            set(vector_fields_from_function)
-        ), "When using builtin functions, there should be no overlapping fields."
+        assert len(vector_fields_from_function) == len(set(vector_fields_from_function)), (
+            "When using builtin functions, there should be no overlapping fields."
+        )
 
         embedding_fields_expected = []
         for field in self._as_list(vector_field):
@@ -474,19 +461,13 @@ class Milvus(VectorStore):
                 f" nor do they belong to any build-in function."
             )
 
-        assert (
-            len(set(vector_fields_from_function) & set(vector_fields_from_embedding))
-            == 0
-        ), (
-            "Vector fields from embeddings and vector fields from builtin functions "
-            "should not overlap."
+        assert len(set(vector_fields_from_function) & set(vector_fields_from_embedding)) == 0, (
+            "Vector fields from embeddings and vector fields from builtin functions should not overlap."
         )
         all_vector_fields = vector_fields_from_embedding + vector_fields_from_function
         # For backward compatibility, the vector field needs to be called "vector",
         # and it can be either a list or a string.
-        self._vector_field: Union[str, List[str]] = cast(
-            Union[str, List[str]], self._from_list(all_vector_fields)
-        )
+        self._vector_field: Union[str, List[str]] = cast(Union[str, List[str]], self._from_list(all_vector_fields))
         self._vector_fields_from_embedding: List[str] = vector_fields_from_embedding
         self._vector_fields_from_function: List[str] = vector_fields_from_function
 
@@ -504,30 +485,22 @@ class Milvus(VectorStore):
                 self._vector_schema_map[vector_field_] = vector_schema_
             else:
                 if self._is_embedding_only or self._is_function_only:
-                    assert len(self._as_list(self._vector_field)) == len(
-                        self._as_list(self.vector_schema)
-                    ), (
+                    assert len(self._as_list(self._vector_field)) == len(self._as_list(self.vector_schema)), (
                         "You should provide the same number of custom `vector_schema`s "
                         "as the number of corresponding `vector_field`s."
                     )
                 else:
                     # If both embedding and builtin functions are provided,
                     # it must specify vector_schema for each vector field.
-                    assert len(self._as_list(vector_field)) == len(
-                        self._as_list(self.vector_schema)
-                    ), (
+                    assert len(self._as_list(vector_field)) == len(self._as_list(self.vector_schema)), (
                         "When multiple custom `vector_schema`s are provided, "
                         "you should provide the same number of corresponding "
                         "`vector_field`s."
                     )
-                for field, vector_schema in zip(
-                    self._as_list(vector_field), self._as_list(self.vector_schema)
-                ):
+                for field, vector_schema in zip(self._as_list(vector_field), self._as_list(self.vector_schema)):
                     self._vector_schema_map[field] = vector_schema
         else:
-            self._vector_schema_map = {
-                field: {} for field in self._as_list(self._vector_field)
-            }
+            self._vector_schema_map = {field: {} for field in self._as_list(self._vector_field)}
 
         # Check index param and prepare index param map
         self._index_param_map: Dict[str, dict] = {}
@@ -542,30 +515,22 @@ class Milvus(VectorStore):
                 self._index_param_map[vector_field_] = index_params_
             else:
                 if self._is_embedding_only or self._is_function_only:
-                    assert len(self._as_list(self._vector_field)) == len(
-                        self._as_list(self.index_params)
-                    ), (
+                    assert len(self._as_list(self._vector_field)) == len(self._as_list(self.index_params)), (
                         "You should provide the same number of custom `index_params`s "
                         "as the number of corresponding `vector_field`s."
                     )
                 else:
                     # If both embedding and builtin functions are provided,
                     # it must specify index_params for each vector field.
-                    assert len(self._as_list(vector_field)) == len(
-                        self._as_list(self.index_params)
-                    ), (
+                    assert len(self._as_list(vector_field)) == len(self._as_list(self.index_params)), (
                         "When multiple custom `index_params`s are provided, "
                         "you should provide the same number of corresponding "
                         "`vector_field`s."
                     )
-                for field, index_params in zip(
-                    self._as_list(vector_field), self._as_list(self.index_params)
-                ):
+                for field, index_params in zip(self._as_list(vector_field), self._as_list(self.index_params)):
                     self._index_param_map[field] = index_params
         else:
-            self._index_param_map = {
-                field: {} for field in self._as_list(self._vector_field)
-            }
+            self._index_param_map = {field: {} for field in self._as_list(self._vector_field)}
 
     @property
     def embeddings(self) -> Optional[Union[EmbeddingType, List[EmbeddingType]]]:  # type: ignore
@@ -595,27 +560,19 @@ class Milvus(VectorStore):
                     loop = asyncio.get_event_loop()
                     if loop.is_running() and not is_main_thread:
                         # In non-main thread with running loop, create directly
-                        self._async_milvus_client = AsyncMilvusClient(
-                            **self._connection_args
-                        )
+                        self._async_milvus_client = AsyncMilvusClient(**self._connection_args)
                     elif not loop.is_running():
                         # Loop exists but not running, set it as current thread's loop
                         asyncio.set_event_loop(loop)
-                        self._async_milvus_client = AsyncMilvusClient(
-                            **self._connection_args
-                        )
+                        self._async_milvus_client = AsyncMilvusClient(**self._connection_args)
                     else:
                         # Other cases, create directly
-                        self._async_milvus_client = AsyncMilvusClient(
-                            **self._connection_args
-                        )
+                        self._async_milvus_client = AsyncMilvusClient(**self._connection_args)
                 except RuntimeError:
                     # No event loop, create a new one
                     loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(loop)
-                    self._async_milvus_client = AsyncMilvusClient(
-                        **self._connection_args
-                    )
+                    self._async_milvus_client = AsyncMilvusClient(**self._connection_args)
 
             except Exception as e:
                 # If still fails, raise clear error message
@@ -680,9 +637,7 @@ class Milvus(VectorStore):
                 return True
         if self._is_function_only:
             builtin_func = self._as_list(self.builtin_func)
-            if len(builtin_func) == 1 and isinstance(
-                builtin_func[0], BM25BuiltInFunction
-            ):
+            if len(builtin_func) == 1 and isinstance(builtin_func[0], BM25BuiltInFunction):
                 return True
         return False
 
@@ -709,9 +664,7 @@ class Milvus(VectorStore):
             timeout=timeout,
         )
 
-    def _create_collection(
-        self, embeddings: List[list], metadatas: Optional[list[dict]] = None
-    ) -> None:
+    def _create_collection(self, embeddings: List[list], metadatas: Optional[list[dict]] = None) -> None:
         metadata_fields = self._prepare_metadata_fields(metadatas)
         text_fields = self._prepare_text_fields()
         primary_key_fields = self._prepare_primary_key_fields()
@@ -753,25 +706,17 @@ class Milvus(VectorStore):
             if self.collection_properties is not None:
                 self.col.set_properties(self.collection_properties)
         except MilvusException as e:
-            logger.error(
-                "Failed to create collection: %s error: %s", self.collection_name, e
-            )
+            logger.error("Failed to create collection: %s error: %s", self.collection_name, e)
             raise e
 
-    def _prepare_metadata_fields(
-        self, metadatas: Optional[list[dict]] = None
-    ) -> List[FieldSchema]:
+    def _prepare_metadata_fields(self, metadatas: Optional[list[dict]] = None) -> List[FieldSchema]:
         fields = []
         # If enable_dynamic_field, we don't need to create fields, and just pass it.
         if self.enable_dynamic_field:
             # If both dynamic fields and partition key field are enabled
             if self._partition_key_field is not None:
                 # create the partition field
-                fields.append(
-                    FieldSchema(
-                        self._partition_key_field, DataType.VARCHAR, max_length=65_535
-                    )
-                )
+                fields.append(FieldSchema(self._partition_key_field, DataType.VARCHAR, max_length=65_535))
         elif self._metadata_field is not None:
             fields.append(FieldSchema(self._metadata_field, DataType.JSON))
         else:
@@ -790,10 +735,7 @@ class Milvus(VectorStore):
                         + vector_fields
                     ):
                         logger.error(
-                            (
-                                "Failure to create collection, "
-                                "metadata key: %s is reserved."
-                            ),
+                            ("Failure to create collection, metadata key: %s is reserved."),
                             key,
                         )
                         raise ValueError(f"Metadata key {key} is reserved.")
@@ -803,20 +745,13 @@ class Milvus(VectorStore):
                         and key in self.metadata_schema  # type: ignore
                         and "dtype" in self.metadata_schema[key]  # type: ignore
                     ):
-                        fields.append(
-                            self._get_field_schema_from_dict(
-                                key, self.metadata_schema[key]
-                            )
-                        )
+                        fields.append(self._get_field_schema_from_dict(key, self.metadata_schema[key]))
                     else:
                         dtype = infer_dtype_bydata(value)
                         # Datatype isn't compatible
                         if dtype == DataType.UNKNOWN or dtype == DataType.NONE:
                             logger.error(
-                                (
-                                    "Failure to create collection, "
-                                    "unrecognized dtype for key: %s"
-                                ),
+                                ("Failure to create collection, unrecognized dtype for key: %s"),
                                 key,
                             )
                             raise ValueError(f"Unrecognized datatype for {key}.")
@@ -826,16 +761,10 @@ class Milvus(VectorStore):
                             for function in self._as_list(self.builtin_func):
                                 if isinstance(function, BM25BuiltInFunction):
                                     if function.input_field_names == self._text_field:
-                                        kwargs = (
-                                            function.get_input_field_schema_kwargs()
-                                        )
+                                        kwargs = function.get_input_field_schema_kwargs()
                                         break
 
-                            fields.append(
-                                FieldSchema(
-                                    key, DataType.VARCHAR, max_length=65_535, **kwargs
-                                )
-                            )
+                            fields.append(FieldSchema(key, DataType.VARCHAR, max_length=65_535, **kwargs))
                         # infer_dtype_bydata currently can't recognize array type,
                         # so this line can not be accessed.
                         # This line may need to be modified in the future when
@@ -843,9 +772,7 @@ class Milvus(VectorStore):
                         # https://github.com/milvus-io/pymilvus/issues/2165
                         elif dtype == DataType.ARRAY:
                             kwargs = self.metadata_schema[key]["kwargs"]  # type: ignore
-                            fields.append(
-                                FieldSchema(name=key, dtype=DataType.ARRAY, **kwargs)
-                            )
+                            fields.append(FieldSchema(name=key, dtype=DataType.ARRAY, **kwargs))
                         else:
                             fields.append(FieldSchema(key, dtype))
         return fields
@@ -859,19 +786,13 @@ class Milvus(VectorStore):
                     kwargs = function.get_input_field_schema_kwargs()
                     break
 
-        fields.append(
-            FieldSchema(self._text_field, DataType.VARCHAR, max_length=65_535, **kwargs)
-        )
+        fields.append(FieldSchema(self._text_field, DataType.VARCHAR, max_length=65_535, **kwargs))
         return fields
 
     def _prepare_primary_key_fields(self) -> List[FieldSchema]:
         fields = []
         if self.auto_id:
-            fields.append(
-                FieldSchema(
-                    self._primary_field, DataType.INT64, is_primary=True, auto_id=True
-                )
-            )
+            fields.append(FieldSchema(self._primary_field, DataType.INT64, is_primary=True, auto_id=True))
         else:
             fields.append(
                 FieldSchema(
@@ -888,11 +809,7 @@ class Milvus(VectorStore):
         fields = []
         embeddings_functions: List[EmbeddingType] = self._as_list(self.embedding_func)
 
-        assert (
-            len(self._vector_fields_from_embedding)
-            == len(embeddings_functions)
-            == len(embeddings)
-        ), (
+        assert len(self._vector_fields_from_embedding) == len(embeddings_functions) == len(embeddings), (
             "The number of `self._vector_fields_from_embedding`, "
             "`embeddings_functions`, and `embeddings` should be the same."
             f"Got {len(self._vector_fields_from_embedding)}, "
@@ -904,14 +821,10 @@ class Milvus(VectorStore):
         ):
             vector_schema = self._vector_schema_map.get(vector_field, None)
             if vector_schema and "dtype" in vector_schema:
-                fields.append(
-                    self._get_field_schema_from_dict(vector_field, vector_schema)
-                )
+                fields.append(self._get_field_schema_from_dict(vector_field, vector_schema))
             else:
                 if self._is_sparse_embedding(embedding_func):
-                    fields.append(
-                        FieldSchema(vector_field, DataType.SPARSE_FLOAT_VECTOR)
-                    )
+                    fields.append(FieldSchema(vector_field, DataType.SPARSE_FLOAT_VECTOR))
                 else:
                     # Supports binary or float vectors
                     fields.append(
@@ -922,9 +835,7 @@ class Milvus(VectorStore):
                         )
                     )
         # Loop through the built-in functions
-        for vector_field, builtin_function in zip(
-            self._vector_fields_from_function, self._as_list(self.builtin_func)
-        ):
+        for vector_field, builtin_function in zip(self._vector_fields_from_function, self._as_list(self.builtin_func)):
             vector_schema = self._vector_schema_map.get(vector_field, None)
             if vector_schema and "dtype" in vector_schema:
                 field = self._get_field_schema_from_dict(vector_field, vector_schema)
@@ -932,19 +843,15 @@ class Milvus(VectorStore):
                 field = FieldSchema(vector_field, DataType.SPARSE_FLOAT_VECTOR)
             else:
                 raise ValueError(
-                    "Unsupported embedding function type: "
-                    f"{type(builtin_function)} for field: {vector_field}."
+                    f"Unsupported embedding function type: {type(builtin_function)} for field: {vector_field}."
                 )
             field.is_function_output = True
             fields.append(field)
         return fields
 
-    def _get_field_schema_from_dict(
-        self, field_name: str, schema_dict: dict
-    ) -> FieldSchema:
+    def _get_field_schema_from_dict(self, field_name: str, schema_dict: dict) -> FieldSchema:
         assert "dtype" in schema_dict, (
-            f"Please provide `dtype` in the schema dict. "
-            f"Existing keys are: {schema_dict.keys()}"
+            f"Please provide `dtype` in the schema dict. Existing keys are: {schema_dict.keys()}"
         )
         dtype = schema_dict.pop("dtype")
         kwargs = schema_dict.pop("kwargs", {})
@@ -969,9 +876,7 @@ class Milvus(VectorStore):
                     return x.to_dict()
         return None
 
-    def _get_indexes(
-        self, field_names: Optional[List[str]] = None
-    ) -> List[dict[str, Any]]:
+    def _get_indexes(self, field_names: Optional[List[str]] = None) -> List[dict[str, Any]]:
         """Return the list of vector index information"""
         index_list = []
         if not field_names:
@@ -985,18 +890,14 @@ class Milvus(VectorStore):
     def _create_index(self) -> None:
         """Create an index on the collection"""
         if isinstance(self.col, Collection):
-            embeddings_functions: List[EmbeddingType] = self._as_list(
-                self.embedding_func
-            )
+            embeddings_functions: List[EmbeddingType] = self._as_list(self.embedding_func)
 
             default_index_params = {
                 "metric_type": "L2",
                 "index_type": "AUTOINDEX",
                 "params": {},
             }
-            for vector_field, embeddings_func in zip(
-                self._vector_fields_from_embedding, embeddings_functions
-            ):
+            for vector_field, embeddings_func in zip(self._vector_fields_from_embedding, embeddings_functions):
                 if not self._get_index(vector_field):
                     try:
                         if not self._index_param_map.get(vector_field, None):
@@ -1017,8 +918,7 @@ class Milvus(VectorStore):
                             using=self.alias,
                         )
                         logger.debug(
-                            "Successfully created an index"
-                            "on %s field on collection: %s",
+                            "Successfully created an indexon %s field on collection: %s",
                             vector_field,
                             self.collection_name,
                         )
@@ -1055,8 +955,7 @@ class Milvus(VectorStore):
                             using=self.alias,
                         )
                         logger.debug(
-                            "Successfully created an index"
-                            "on %s field on collection: %s",
+                            "Successfully created an indexon %s field on collection: %s",
                             vector_field,
                             self.collection_name,
                         )
@@ -1084,9 +983,7 @@ class Milvus(VectorStore):
                 if index is not None:
                     index_type: str = index["index_param"]["index_type"]
                     metric_type: str = index["index_param"]["metric_type"]
-                    search_params = copy.deepcopy(
-                        self.default_search_params[index_type]
-                    )
+                    search_params = copy.deepcopy(self.default_search_params[index_type])
                     search_params["metric_type"] = metric_type
                     search_params_list.append(search_params)
             self.search_params = self._from_list(search_params_list)
@@ -1102,8 +999,7 @@ class Milvus(VectorStore):
         if (
             isinstance(self.col, Collection)
             and self._get_indexes()
-            and utility.load_state(self.collection_name, using=self.alias)
-            == LoadState.NotLoad
+            and utility.load_state(self.collection_name, using=self.alias) == LoadState.NotLoad
         ):
             self.col.load(
                 partition_names=partition_names,
@@ -1136,14 +1032,10 @@ class Milvus(VectorStore):
         insert_list: list[dict] = []
 
         for vector_field_embeddings in embeddings:
-            assert len(texts) == len(
-                vector_field_embeddings
-            ), "Mismatched lengths of texts and embeddings."
+            assert len(texts) == len(vector_field_embeddings), "Mismatched lengths of texts and embeddings."
 
         if metadatas is not None:
-            assert len(texts) == len(
-                metadatas
-            ), "Mismatched lengths of texts and metadatas."
+            assert len(texts) == len(metadatas), "Mismatched lengths of texts and metadatas."
 
         for i, text in zip(range(len(texts)), texts):
             entity_dict = {}
@@ -1212,24 +1104,18 @@ class Milvus(VectorStore):
         texts = list(texts)
         if not self.auto_id and ids is None:
             warnings.warn(
-                "No ids provided and auto_id is False. "
-                "Setting auto_id to True automatically.",
+                "No ids provided and auto_id is False. Setting auto_id to True automatically.",
                 UserWarning,
             )
             self.auto_id = True
         elif not self.auto_id and ids:  # Check ids
-            assert len(set(ids)) == len(
-                texts
-            ), "Different lengths of texts and unique ids are provided."
+            assert len(set(ids)) == len(texts), "Different lengths of texts and unique ids are provided."
             assert all(isinstance(x, str) for x in ids), "All ids should be strings."
-            assert all(
-                len(x.encode()) <= 65_535 for x in ids
-            ), "Each id should be a string less than 65535 bytes."
+            assert all(len(x.encode()) <= 65_535 for x in ids), "Each id should be a string less than 65535 bytes."
 
         elif self.auto_id and ids:
             logger.warning(
-                "The ids parameter is ignored when auto_id is True. "
-                "The ids will be generated automatically."
+                "The ids parameter is ignored when auto_id is True. The ids will be generated automatically."
             )
 
         embeddings_functions: List[EmbeddingType] = self._as_list(self.embedding_func)
@@ -1263,8 +1149,7 @@ class Milvus(VectorStore):
             #     [f1(c), f2(c)]
             # ]
             transposed_embeddings = [
-                [embeddings[j][i] for j in range(len(embeddings))]
-                for i in range(len(embeddings[0]))
+                [embeddings[j][i] for j in range(len(embeddings))] for i in range(len(embeddings[0]))
             ]
         else:
             # transposed_embeddings = [
@@ -1336,8 +1221,7 @@ class Milvus(VectorStore):
             # ]
             # Transpose embeddings to make it a list of embeddings of each type.
             embeddings = [  # type: ignore
-                [embeddings[j][i] for j in range(len(embeddings))]
-                for i in range(len(embeddings[0]))
+                [embeddings[j][i] for j in range(len(embeddings))] for i in range(len(embeddings[0]))
             ]
             # embeddings = [
             #     [f1(a), f1(b), f1(c)],
@@ -1383,9 +1267,7 @@ class Milvus(VectorStore):
                 )
                 pks.extend(res["ids"])
             except MilvusException as e:
-                self._handle_batch_operation_exception(
-                    e, batch_insert_list, i, total_count, "insert"
-                )
+                self._handle_batch_operation_exception(e, batch_insert_list, i, total_count, "insert")
         return pks
 
     def _handle_batch_operation_exception(
@@ -1418,7 +1300,7 @@ class Milvus(VectorStore):
             else:
                 log_entity[k] = v
         logger.error(
-            "Failed to %s batch starting at entity: %s/%s. " "First entity data: %s",
+            "Failed to %s batch starting at entity: %s/%s. First entity data: %s",
             operation_name,
             batch_index + 1,
             total_count,
@@ -1461,14 +1343,12 @@ class Milvus(VectorStore):
             return None
 
         assert not self._is_multi_vector, (
-            "_collection_search does not support multi-vector search. "
-            "You can use _collection_hybrid_search instead."
+            "_collection_search does not support multi-vector search. You can use _collection_hybrid_search instead."
         )
 
         if param is None:
             assert len(self._as_list(self.search_params)) == 1, (
-                "The number of search params is larger than 1, "
-                "please check the search_params in this Milvus instance."
+                "The number of search params is larger than 1, please check the search_params in this Milvus instance."
             )
             param = self._as_list(self.search_params)[0]
 
@@ -1538,9 +1418,7 @@ class Milvus(VectorStore):
         if not param:
             param_list = self._as_list(self.search_params)
         else:
-            assert len(self._as_list(param)) == len(
-                self._as_list(self.search_params)
-            ), (
+            assert len(self._as_list(param)) == len(self._as_list(self.search_params)), (
                 f"The number of search params ({len(self._as_list(param))})"
                 f" does not match the number of vector fields "
                 f"({len(self._as_list(self._vector_field))})."
@@ -1608,9 +1486,7 @@ class Milvus(VectorStore):
             logger.debug("No existing collection to search.")
             return []
         timeout = self.timeout or timeout
-        res = self.similarity_search_with_score(
-            query=query, k=k, param=param, expr=expr, timeout=timeout, **kwargs
-        )
+        res = self.similarity_search_with_score(query=query, k=k, param=param, expr=expr, timeout=timeout, **kwargs)
         return [doc for doc, _ in res]
 
     def similarity_search_by_vector(
@@ -1685,8 +1561,7 @@ class Milvus(VectorStore):
 
         else:
             assert len(self._as_list(param)) <= 1, (
-                "When there is only one vector field, you can not provide multiple "
-                "search param dicts."
+                "When there is only one vector field, you can not provide multiple search param dicts."
             )
             param = cast(Optional[dict], self._from_list(param))
             if (
@@ -1716,8 +1591,7 @@ class Milvus(VectorStore):
                 )
             else:
                 raise RuntimeError(
-                    "Check either it's multi vectors or single vector with "
-                    "only one embedding/builtin function."
+                    "Check either it's multi vectors or single vector with only one embedding/builtin function."
                 )
 
         return self._parse_documents_from_search_results(col_search_res)
@@ -1802,10 +1676,7 @@ class Milvus(VectorStore):
             len(self._as_list(self.embedding_func)) == 1  # type: ignore[arg-type]
         ), "You must set only one embedding function for MMR search."
         if len(self._vector_fields_from_function) > 0:
-            logger.warning(
-                "MMR search will only use the embedding function, "
-                "without the built-in functions."
-            )
+            logger.warning("MMR search will only use the embedding function, without the built-in functions.")
 
         embedding = self._as_list(self.embedding_func)[0].embed_query(query)  # type: ignore
         timeout = self.timeout or timeout
@@ -1909,18 +1780,14 @@ class Milvus(VectorStore):
 
         """
         if not self.col or not self.col.indexes:
-            raise ValueError(
-                "No index params provided. Could not determine relevance function."
-            )
+            raise ValueError("No index params provided. Could not determine relevance function.")
         if self._is_multi_embedding or self._is_multi_function:
             raise ValueError(
-                "No supported normalization function for multi vectors. "
-                "Could not determine relevance function."
+                "No supported normalization function for multi vectors. Could not determine relevance function."
             )
         if self._is_sparse:
             raise ValueError(
-                "No supported normalization function for sparse indexes. "
-                "Could not determine relevance function."
+                "No supported normalization function for sparse indexes. Could not determine relevance function."
             )
 
         def _map_l2_to_similarity(l2_distance: float) -> float:
@@ -1945,15 +1812,13 @@ class Milvus(VectorStore):
 
         if not self.index_params:
             logger.warning(
-                "No index params provided. Could not determine relevance function. "
-                "Use L2 distance as default."
+                "No index params provided. Could not determine relevance function. Use L2 distance as default."
             )
             return _map_l2_to_similarity
         indexes_params = self._as_list(self.index_params)
         if len(indexes_params) > 1:
             raise ValueError(
-                "No supported normalization function for multi vectors. "
-                "Could not determine relevance function."
+                "No supported normalization function for multi vectors. Could not determine relevance function."
             )
         # In the left case, the len of indexes_params is 1.
         metric_type = indexes_params[0]["metric_type"]
@@ -1962,14 +1827,9 @@ class Milvus(VectorStore):
         elif metric_type in ["IP", "COSINE"]:
             return _map_ip_to_similarity
         else:
-            raise ValueError(
-                "No supported normalization function"
-                f" for metric type: {metric_type}."
-            )
+            raise ValueError(f"No supported normalization function for metric type: {metric_type}.")
 
-    def delete(
-        self, ids: Optional[List[str]] = None, expr: Optional[str] = None, **kwargs: str
-    ) -> Optional[bool]:
+    def delete(self, ids: Optional[List[str]] = None, expr: Optional[str] = None, **kwargs: str) -> Optional[bool]:
         """Delete by vector ID or boolean expression.
         Refer to [Milvus documentation](https://milvus.io/docs/delete_data.md)
         for notes and examples of expressions.
@@ -1985,21 +1845,15 @@ class Milvus(VectorStore):
         """
         if isinstance(ids, list) and len(ids) > 0:
             if expr is not None:
-                logger.warning(
-                    "Both ids and expr are provided. " "Ignore expr and delete by ids."
-                )
+                logger.warning("Both ids and expr are provided. Ignore expr and delete by ids.")
             expr = f"{self._primary_field} in {ids}"
         else:
-            assert isinstance(
-                expr, str
-            ), "Either ids list or expr string must be provided."
+            assert isinstance(expr, str), "Either ids list or expr string must be provided."
         try:
             self.client.delete(self.collection_name, filter=expr, **kwargs)
             return True
         except MilvusException as e:
-            logger.error(
-                "Failed to delete entities: %s error: %s", self.collection_name, e
-            )
+            logger.error("Failed to delete entities: %s error: %s", self.collection_name, e)
             return False
 
     def drop(self) -> None:
@@ -2008,9 +1862,7 @@ class Milvus(VectorStore):
             self.col.drop()
             self.col = None
         else:
-            logger.warning(
-                "Collection %s does not exist, nothing to drop.", self.collection_name
-            )
+            logger.warning("Collection %s does not exist, nothing to drop.", self.collection_name)
 
     @classmethod
     def from_texts(
@@ -2027,9 +1879,7 @@ class Milvus(VectorStore):
         *,
         ids: Optional[List[str]] = None,
         auto_id: bool = False,
-        builtin_function: Optional[
-            Union[BaseMilvusBuiltInFunction, List[BaseMilvusBuiltInFunction]]
-        ] = None,
+        builtin_function: Optional[Union[BaseMilvusBuiltInFunction, List[BaseMilvusBuiltInFunction]]] = None,
         **kwargs: Any,
     ) -> Milvus:
         """Create a Milvus collection, indexes it with HNSW, and insert data.
@@ -2065,9 +1915,7 @@ class Milvus(VectorStore):
         """
         if isinstance(ids, list) and len(ids) > 0:
             if auto_id:
-                logger.warning(
-                    "Both ids and auto_id are provided. " "Ignore auto_id and use ids."
-                )
+                logger.warning("Both ids and auto_id are provided. Ignore auto_id and use ids.")
             auto_id = False
         else:
             auto_id = True
@@ -2172,9 +2020,7 @@ class Milvus(VectorStore):
         if not ids:
             self.add_documents(documents=documents, **kwargs)
         else:
-            assert len(set(ids)) == len(
-                documents
-            ), "Different lengths of documents and unique ids are provided."
+            assert len(set(ids)) == len(documents), "Different lengths of documents and unique ids are provided."
 
         embeddings_functions: List[EmbeddingType] = self._as_list(self.embedding_func)
         embeddings: List = []
@@ -2212,9 +2058,7 @@ class Milvus(VectorStore):
                     **kwargs,
                 )
             except MilvusException as e:
-                self._handle_batch_operation_exception(
-                    e, batch_upsert_list, i, total_count, "upsert"
-                )
+                self._handle_batch_operation_exception(e, batch_upsert_list, i, total_count, "upsert")
         return
 
     @staticmethod
@@ -2251,8 +2095,7 @@ class Milvus(VectorStore):
             return RRFRanker()
         else:
             logger.error(
-                "Ranker %s does not exist. "
-                "Please use on of the following rankers: %s, %s",
+                "Ranker %s does not exist. Please use on of the following rankers: %s, %s",
                 ranker_type,
                 "weighted",
                 "rrf",
@@ -2264,14 +2107,10 @@ class Milvus(VectorStore):
         forbidden_fields = []
         for builtin_function in self._as_list(self.builtin_func):
             if builtin_function.type == FunctionType.BM25:
-                forbidden_fields.extend(
-                    self._as_list(builtin_function.output_field_names)
-                )
+                forbidden_fields.extend(self._as_list(builtin_function.output_field_names))
         return [field for field in fields if field not in forbidden_fields]
 
-    def search_by_metadata(
-        self, expr: str, fields: Optional[List[str]] = None, limit: int = 10
-    ) -> List[Document]:
+    def search_by_metadata(self, expr: str, fields: Optional[List[str]] = None, limit: int = 10) -> List[Document]:
         """
         Searches the Milvus vector store based on metadata conditions.
 
@@ -2308,10 +2147,7 @@ class Milvus(VectorStore):
                 output_fields=fields,
                 limit=limit,
             )
-            return [
-                Document(page_content=result[self._text_field], metadata=result)
-                for result in results
-            ]
+            return [Document(page_content=result[self._text_field], metadata=result) for result in results]
         except MilvusException as e:
             logger.error(f"Metadata search failed: {e}")
             return []
@@ -2356,20 +2192,16 @@ class Milvus(VectorStore):
         texts = list(texts)
         if not self.auto_id and ids is None:
             warnings.warn(
-                "No ids provided and auto_id is False. "
-                "Setting auto_id to True automatically.",
+                "No ids provided and auto_id is False. Setting auto_id to True automatically.",
                 UserWarning,
             )
             self.auto_id = True
         elif not self.auto_id and ids:  # Check ids
-            assert len(set(ids)) == len(
-                texts
-            ), "Different lengths of texts and unique ids are provided."
+            assert len(set(ids)) == len(texts), "Different lengths of texts and unique ids are provided."
 
         elif self.auto_id and ids:
             logger.warning(
-                "The ids parameter is ignored when auto_id is True. "
-                "The ids will be generated automatically."
+                "The ids parameter is ignored when auto_id is True. The ids will be generated automatically."
             )
 
         embeddings_functions: List[EmbeddingType] = self._as_list(self.embedding_func)
@@ -2388,8 +2220,7 @@ class Milvus(VectorStore):
         # Transpose it into row-wise
         if self._is_multi_embedding:
             transposed_embeddings = [
-                [embeddings[j][i] for j in range(len(embeddings))]
-                for i in range(len(embeddings[0]))
+                [embeddings[j][i] for j in range(len(embeddings))] for i in range(len(embeddings[0]))
             ]
         else:
             transposed_embeddings = embeddings[0] if len(embeddings) > 0 else []
@@ -2451,8 +2282,7 @@ class Milvus(VectorStore):
                 embeddings = [[embedding] for embedding in embeddings]  # type: ignore
             # Transpose embeddings to make it a list of embeddings of each type.
             embeddings = [  # type: ignore
-                [embeddings[j][i] for j in range(len(embeddings))]
-                for i in range(len(embeddings[0]))
+                [embeddings[j][i] for j in range(len(embeddings))] for i in range(len(embeddings[0]))
             ]
 
         # If the collection hasn't been initialized yet, perform all steps to do so
@@ -2494,9 +2324,7 @@ class Milvus(VectorStore):
                 )
                 pks.extend(res["ids"])
             except MilvusException as e:
-                self._handle_batch_operation_exception(
-                    e, batch_insert_list, i, total_count, "insert"
-                )
+                self._handle_batch_operation_exception(e, batch_insert_list, i, total_count, "insert")
         return pks
 
     async def _acollection_search(
@@ -2534,14 +2362,12 @@ class Milvus(VectorStore):
             return None
 
         assert not self._is_multi_vector, (
-            "_acollection_search does not support multi-vector search. "
-            "You can use _acollection_hybrid_search instead."
+            "_acollection_search does not support multi-vector search. You can use _acollection_hybrid_search instead."
         )
 
         if param is None:
             assert len(self._as_list(self.search_params)) == 1, (
-                "The number of search params is larger than 1, "
-                "please check the search_params in this Milvus instance."
+                "The number of search params is larger than 1, please check the search_params in this Milvus instance."
             )
             param = self._as_list(self.search_params)[0]
 
@@ -2612,9 +2438,7 @@ class Milvus(VectorStore):
         if not param:
             param_list = self._as_list(self.search_params)
         else:
-            assert len(self._as_list(param)) == len(
-                self._as_list(self.search_params)
-            ), (
+            assert len(self._as_list(param)) == len(self._as_list(self.search_params)), (
                 f"The number of search params ({len(self._as_list(param))})"
                 f" does not match the number of vector fields "
                 f"({len(self._as_list(self._vector_field))})."
@@ -2759,8 +2583,7 @@ class Milvus(VectorStore):
 
         else:
             assert len(self._as_list(param)) <= 1, (
-                "When there is only one vector field, you can not provide multiple "
-                "search param dicts."
+                "When there is only one vector field, you can not provide multiple search param dicts."
             )
             param = cast(Optional[dict], self._from_list(param))
             if (
@@ -2792,8 +2615,7 @@ class Milvus(VectorStore):
                 )
             else:
                 raise RuntimeError(
-                    "Check either it's multi vectors or single vector with "
-                    "only one embedding/builtin function."
+                    "Check either it's multi vectors or single vector with only one embedding/builtin function."
                 )
 
         return self._parse_documents_from_search_results(col_search_res)
@@ -2878,10 +2700,7 @@ class Milvus(VectorStore):
             len(self._as_list(self.embedding_func)) == 1  # type: ignore[arg-type]
         ), "You must set only one embedding function for MMR search."
         if len(self._vector_fields_from_function) > 0:
-            logger.warning(
-                "MMR search will only use the embedding function, "
-                "without the built-in functions."
-            )
+            logger.warning("MMR search will only use the embedding function, without the built-in functions.")
 
         embedding = await self._as_list(self.embedding_func)[0].aembed_query(query)  # type: ignore
         timeout = self.timeout or timeout
@@ -2992,21 +2811,15 @@ class Milvus(VectorStore):
         """
         if isinstance(ids, list) and len(ids) > 0:
             if expr is not None:
-                logger.warning(
-                    "Both ids and expr are provided. " "Ignore expr and delete by ids."
-                )
+                logger.warning("Both ids and expr are provided. Ignore expr and delete by ids.")
             expr = f"{self._primary_field} in {ids}"
         else:
-            assert isinstance(
-                expr, str
-            ), "Either ids list or expr string must be provided."
+            assert isinstance(expr, str), "Either ids list or expr string must be provided."
         try:
             await self.aclient.delete(self.collection_name, filter=expr, **kwargs)
             return True
         except MilvusException as e:
-            logger.error(
-                "Failed to delete entities: %s error: %s", self.collection_name, e
-            )
+            logger.error("Failed to delete entities: %s error: %s", self.collection_name, e)
             return False
 
     @classmethod
@@ -3024,9 +2837,7 @@ class Milvus(VectorStore):
         *,
         ids: Optional[List[str]] = None,
         auto_id: bool = False,
-        builtin_function: Optional[
-            Union[BaseMilvusBuiltInFunction, List[BaseMilvusBuiltInFunction]]
-        ] = None,
+        builtin_function: Optional[Union[BaseMilvusBuiltInFunction, List[BaseMilvusBuiltInFunction]]] = None,
         **kwargs: Any,
     ) -> Milvus:
         """Create a Milvus collection, indexes it with HNSW, and insert data
@@ -3063,9 +2874,7 @@ class Milvus(VectorStore):
         """
         if isinstance(ids, list) and len(ids) > 0:
             if auto_id:
-                logger.warning(
-                    "Both ids and auto_id are provided. " "Ignore auto_id and use ids."
-                )
+                logger.warning("Both ids and auto_id are provided. Ignore auto_id and use ids.")
             auto_id = False
         else:
             auto_id = True
@@ -3085,9 +2894,7 @@ class Milvus(VectorStore):
         await vector_db.aadd_texts(texts=texts, metadatas=metadatas, ids=ids)
         return vector_db
 
-    async def aadd_documents(
-        self, documents: List[Document], **kwargs: Any
-    ) -> List[str]:
+    async def aadd_documents(self, documents: List[Document], **kwargs: Any) -> List[str]:
         """Run more documents through the embeddings and add to the vectorstore
         asynchronously.
 
@@ -3155,9 +2962,7 @@ class Milvus(VectorStore):
             await self.aadd_documents(documents=documents, **kwargs)
             return
 
-        assert len(set(ids)) == len(
-            documents
-        ), "Different lengths of documents and unique ids are provided."
+        assert len(set(ids)) == len(documents), "Different lengths of documents and unique ids are provided."
 
         embeddings_functions: List[EmbeddingType] = self._as_list(self.embedding_func)
         embeddings: List = []
@@ -3195,9 +3000,7 @@ class Milvus(VectorStore):
                     **kwargs,
                 )
             except MilvusException as e:
-                self._handle_batch_operation_exception(
-                    e, batch_upsert_list, i, total_count, "upsert"
-                )
+                self._handle_batch_operation_exception(e, batch_upsert_list, i, total_count, "upsert")
         return
 
     async def asearch_by_metadata(
@@ -3239,10 +3042,7 @@ class Milvus(VectorStore):
                 output_fields=fields,
                 limit=limit,
             )
-            return [
-                Document(page_content=result[self._text_field], metadata=result)
-                for result in results
-            ]
+            return [Document(page_content=result[self._text_field], metadata=result) for result in results]
         except MilvusException as e:
             logger.error(f"Metadata search failed: {e}")
             return []
