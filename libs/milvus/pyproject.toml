@@ -11,7 +11,7 @@ readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10,<4.0"
 dependencies = [
-    "pymilvus>=2.5.7,<3.0",
+    "pymilvus>=2.6.0,<3.0",
     "langchain-core>=1.0.0",
 ]
 

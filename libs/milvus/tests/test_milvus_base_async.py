@@ -1,5 +1,6 @@
+import asyncio
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, List, Optional
+from typing import Any, ClassVar, Generator, List, Optional
 
 import pytest
 from langchain_core.documents import Document
@@ -20,6 +21,18 @@ from tests.utils import (
 class TestMilvusBaseAsync(ABC):
     __test__ = False
     TEST_URI: ClassVar[Optional[str]] = None
+
+    @pytest.fixture(scope="class")
+    def event_loop(self) -> Generator[asyncio.AbstractEventLoop, None, None]:
+        """Override the default event_loop fixture to use class scope.
+
+        This is necessary because AsyncMilvusClient uses a global gRPC connection pool
+        that gets bound to the first event loop it encounters. By sharing the event
+        loop across all tests in this class, we avoid the "Event loop is closed" error.
+        """
+        loop = asyncio.new_event_loop()
+        yield loop
+        loop.close()
 
     @abstractmethod
     def get_test_uri(self) -> str:
