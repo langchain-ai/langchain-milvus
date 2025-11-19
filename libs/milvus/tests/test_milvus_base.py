@@ -6,7 +6,9 @@ from typing import Any, ClassVar, List, Optional
 import pytest
 from langchain_core.documents import Document
 
-from langchain_milvus.function import BM25BuiltInFunction
+from langchain_milvus.function import (
+    BM25BuiltInFunction,
+)
 from langchain_milvus.utils.sparse import BM25SparseEmbedding
 from langchain_milvus.vectorstores import Milvus
 from tests.utils import (

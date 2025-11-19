@@ -47,9 +47,21 @@ jobs:
       working-directory: ${{ matrix.working-directory }}
     secrets: inherit
 
+  debug-secrets:
+    name: Debug secrets availability
+    needs: [ build ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check secrets in main workflow
+        run: |
+          echo "=== Main workflow secrets check ==="
+          echo "TEST_SECRET exists: ${{ secrets.TEST_SECRET != '' }}"
+          echo "OPENAI_API_KEY exists: ${{ secrets.OPENAI_API_KEY != '' }}"
+          echo "Available secrets keys: ${{ toJSON(secrets) }}"
+  
   test:
     name: cd ${{ matrix.working-directory }}
-    needs: [ build ]
+    needs: [ build, debug-secrets ]
     if: ${{ needs.build.outputs.dirs-to-test != '[]' }}
     strategy:
       matrix:
