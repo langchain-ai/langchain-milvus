@@ -51,12 +51,32 @@ jobs:
           cd ..
 
       - name: Run Milvus
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           cd milvus_temp
+          
+          # Patch the script to preserve existing user.yaml
+          python3 $GITHUB_WORKSPACE/.github/scripts/patch_milvus_script.py standalone_embed.sh
+          
+          # Create our user.yaml with OpenAI credentials BEFORE running the script
+          # The patched script will now preserve this file
+          cat > user.yaml << EOF
+credential:
+  openai_key:
+    apikey: ${OPENAI_API_KEY}
+
+function:
+  textEmbedding:
+    providers:
+      openai:
+        credential: openai_key
+EOF
+          
           bash standalone_embed.sh start
           cd ..
           sleep 5
-          echo "\nMilvus server started!"
+          echo "\nMilvus server started with OpenAI API key configured!"
 
       - name: Run integration tests
         shell: bash

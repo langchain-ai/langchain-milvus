@@ -1,6 +1,7 @@
 from langchain_milvus.function import (
     BaseMilvusBuiltInFunction,
     BM25BuiltInFunction,
+    TextEmbeddingBuiltInFunction,
 )
 from langchain_milvus.retrievers import (
     MilvusCollectionHybridSearchRetriever,
@@ -15,4 +16,5 @@ __all__ = [
     "MilvusCollectionHybridSearchRetriever",
     "BaseMilvusBuiltInFunction",
     "BM25BuiltInFunction",
+    "TextEmbeddingBuiltInFunction",
 ]
