@@ -26,6 +26,7 @@ from pymilvus import (
     Collection,
     CollectionSchema,
     DataType,
+    Function,
     FunctionType,
     MilvusClient,
     MilvusException,
@@ -139,6 +140,44 @@ def maximal_marginal_relevance(
         idxs.append(idx_to_add)
         selected = np.append(selected, [embedding_list[idx_to_add]], axis=0)
     return idxs
+
+
+def check_model_ranker_params(ranker_params: dict) -> None:
+    """
+    check the model ranker params.
+
+    Args:
+        ranker_params: The model ranker params.
+
+    Returns:
+        None
+    """
+    provider = ranker_params.get("provider", "")
+    if provider not in ["vllm", "tei", "cohere", "voyageai", "siliconflow"]:
+        raise ValueError(
+            f"Provider {provider} is not supported. "
+            "Please use one of the following providers: "
+            "vllm, tei, cohere, voyageai, siliconflow."
+        )
+    if "queries" not in ranker_params:
+        raise ValueError(
+            f"Provider {provider} requires a queries parameter. "
+            "Please provide a queries parameter in the ranker_params."
+        )
+    if provider in ["vllm", "tei"]:
+        if "endpoint" not in ranker_params:
+            raise ValueError(
+                f"Provider {provider} requires an endpoint. "
+                "Please provide an endpoint in the ranker_params."
+            )
+    if provider in ["cohere", "voyageai", "siliconflow"]:
+        if "model_name" not in ranker_params:
+            raise ValueError(
+                f"Provider {provider} requires a model_name parameter. "
+                "Please provide a model_name parameter in the ranker_params."
+            )
+    if "reranker" not in ranker_params or ranker_params["reranker"] != "model":
+        ranker_params["reranker"] = "model"
 
 
 EmbeddingType = Union[Embeddings, BaseSparseEmbedding]
@@ -1601,7 +1640,7 @@ class Milvus(VectorStore):
         param: Optional[dict | list[dict]] = None,
         expr: Optional[str] = None,
         fetch_k: Optional[int] = 4,
-        ranker_type: Optional[Literal["rrf", "weighted"]] = None,
+        ranker_type: Optional[Literal["rrf", "weighted", "model"]] = None,
         ranker_params: Optional[dict] = None,
         timeout: Optional[float] = None,
         **kwargs: Any,
@@ -2367,9 +2406,9 @@ class Milvus(VectorStore):
 
     def _create_ranker(
         self,
-        ranker_type: Optional[Literal["rrf", "weighted"]],
+        ranker_type: Optional[Literal["rrf", "weighted", "model"]],
         ranker_params: dict,
-    ) -> Union[WeightedRanker, RRFRanker]:
+    ) -> Union[WeightedRanker, RRFRanker, Function]:
         """A Ranker factory method"""
         default_weights = [1.0] * len(self._as_list(self._vector_field))
         if not ranker_type:
@@ -2383,6 +2422,14 @@ class Milvus(VectorStore):
             if k:
                 return RRFRanker(k)
             return RRFRanker()
+        elif ranker_type == "model":
+            check_model_ranker_params(ranker_params)
+            return Function(
+                name=f"{ranker_params['provider']}_semantic_ranker",
+                input_field_names=["text"],
+                function_type=FunctionType.RERANK,
+                params=ranker_params,
+            )
         else:
             logger.error(
                 "Ranker %s does not exist. "
@@ -2390,6 +2437,7 @@ class Milvus(VectorStore):
                 ranker_type,
                 "weighted",
                 "rrf",
+                "model",
             )
             raise ValueError("Unrecognized ranker of type %s", ranker_type)
 
@@ -2702,7 +2750,7 @@ class Milvus(VectorStore):
         param: Optional[dict | list[dict]] = None,
         expr: Optional[str] = None,
         fetch_k: Optional[int] = 4,
-        ranker_type: Optional[Literal["rrf", "weighted"]] = None,
+        ranker_type: Optional[Literal["rrf", "weighted", "model"]] = None,
         ranker_params: Optional[dict] = None,
         timeout: Optional[float] = None,
         **kwargs: Any,
