@@ -38,6 +38,7 @@ markers = [
     "requires: mark tests as requiring a specific library",
     "asyncio: mark tests as requiring asyncio",
     "compile: mark placeholder test used to compile integration tests without running them",
+    "requires_apikey: mark tests as requiring API key configured in Milvus server (e.g., OpenAI)",
 ]
 asyncio_mode = "auto"
 
