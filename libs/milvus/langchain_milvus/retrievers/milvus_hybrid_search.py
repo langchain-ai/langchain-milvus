@@ -21,26 +21,35 @@ class MilvusCollectionHybridSearchRetriever(BaseRetriever):
 
     collection: Collection
     """Milvus Collection object."""
+
     rerank: BaseRanker
     """Milvus ranker object. Such as WeightedRanker or RRFRanker."""
+
     anns_fields: List[str]
     """The names of vector fields that are used for ANNS search."""
+
     field_embeddings: List[Union[Embeddings, BaseSparseEmbedding]]
     """The embedding functions of each vector fields, 
     which can be either Embeddings or BaseSparseEmbedding."""
+
     field_search_params: Optional[List[Dict]] = None
     """The search parameters of each vector fields. 
     If not specified, the default search parameters will be used."""
+
     field_limits: Optional[List[int]] = None
     """Limit number of results for each ANNS field. 
     If not specified, the default top_k will be used."""
+
     field_exprs: Optional[List[Optional[str]]] = None
     """The boolean expression for filtering the search results."""
+
     top_k: int = 4
     """Final top-K number of documents to retrieve."""
+
     text_field: str = "text"
     """The text field name, 
     which will be used as the `page_content` of a `Document` object."""
+
     output_fields: Optional[List[str]] = None
     """Final output fields of the documents. 
     If not specified, all fields except the vector fields will be used as output fields,
@@ -82,9 +91,9 @@ class MilvusCollectionHybridSearchRetriever(BaseRetriever):
         self.collection.load()
 
     def _validate_fields_num(self) -> None:
-        assert (
-            len(self.anns_fields) >= 2
-        ), "At least two fields are required for hybrid search."
+        assert len(self.anns_fields) >= 2, (
+            "At least two fields are required for hybrid search."
+        )
         lengths = [len(self.anns_fields)]
         if self.field_limits is not None:
             lengths.append(len(self.field_limits))
@@ -102,17 +111,17 @@ class MilvusCollectionHybridSearchRetriever(BaseRetriever):
     def _validate_fields_name(self) -> None:
         collection_fields = [x.name for x in self.collection.schema.fields]
         for field in self.anns_fields:
-            assert (
-                field in collection_fields
-            ), f"{field} is not a valid field in the collection."
-        assert (
-            self.text_field in collection_fields
-        ), f"{self.text_field} is not a valid field in the collection."
+            assert field in collection_fields, (
+                f"{field} is not a valid field in the collection."
+            )
+        assert self.text_field in collection_fields, (
+            f"{self.text_field} is not a valid field in the collection."
+        )
         for field in self.output_fields:  # type: ignore[union-attr]
             if not self.collection.schema.enable_dynamic_field:
-                assert (
-                    field in collection_fields
-                ), f"{field} is not a valid field in the collection."
+                assert field in collection_fields, (
+                    f"{field} is not a valid field in the collection."
+                )
 
     def _get_output_fields(self) -> List[str]:
         if self.output_fields:
