@@ -2170,30 +2170,24 @@ class Milvus(VectorStore):
         """Create a Milvus collection, indexes it with HNSW, and insert data.
 
         Args:
-            texts (List[str]): Text data.
-            embedding (Optional[Union[Embeddings, BaseSparseEmbedding]]): Embedding
-                function.
-            metadatas (Optional[List[dict]]): Metadata for each text if it exists.
-                Defaults to None.
-            collection_name (str, optional): Collection name to use. Defaults to
-                "LangChainCollection".
-            connection_args (dict[str, Any], optional): Connection args to use. Defaults
-                to DEFAULT_MILVUS_CONNECTION.
-            consistency_level (str, optional): Which consistency level to use. Defaults
-                to "Session".
-            index_params (Optional[dict], optional): Which index_params to use. Defaults
-                to None.
-            search_params (Optional[dict], optional): Which search params to use.
-                Defaults to None.
-            drop_old (Optional[bool], optional): Whether to drop the collection with
-                that name if it exists. Defaults to False.
-            ids (Optional[List[str]]): List of text ids. Defaults to None.
-            auto_id (bool): Whether to enable auto id for primary key. Defaults to
-                False. If False, you need to provide text ids (string less than 65535
-                bytes). If True, Milvus will generate unique integers as primary keys.
-            builtin_function (Optional[Union[BaseMilvusBuiltInFunction,
-                List[BaseMilvusBuiltInFunction]]]):
-                Built-in function to use. Defaults to None.
+            texts: Text data.
+            embedding: Embedding function.
+            metadatas: Metadata for each text if it exists.
+            collection_name: Collection name to use.
+            connection_args: Connection args to use. Defaults to
+                `DEFAULT_MILVUS_CONNECTION`.
+            consistency_level: Which consistency level to use.
+            index_params: Which `index_params` to use.
+            search_params: Which search params to use.
+            drop_old: Whether to drop the collection with that name if it exists.
+            ids: List of text ids.
+            auto_id: Whether to enable auto id for primary key.
+
+                If `False`, you need to provide text ids (string less than `65535`
+                bytes).
+
+                If `True`, Milvus will generate unique integers as primary keys.
+            builtin_function: Built-in function to use.
             **kwargs: Other parameters in Milvus Collection.
         Returns:
             Milvus: Milvus Vector Store
@@ -3188,8 +3182,8 @@ class Milvus(VectorStore):
                 False. If False, you need to provide text ids (string less than 65535
                 bytes). If True, Milvus will generate unique integers as primary keys.
             builtin_function (Optional[Union[BaseMilvusBuiltInFunction,
-                List[BaseMilvusBuiltInFunction]]]):
-                Built-in function to use. Defaults to None.
+                List[BaseMilvusBuiltInFunction]]]): Built-in function to use.
+                Defaults to None.
             **kwargs: Other parameters in Milvus Collection.
         Returns:
             Milvus: Milvus Vector Store
