@@ -326,9 +326,9 @@ class Milvus(VectorStore):
                 "Either `embedding_function` or `builtin_function` should be provided."
             )
 
-        self.embedding_func: Optional[Union[EmbeddingType, List[EmbeddingType]]] = (
-            self._from_list(embedding_function)
-        )
+        self.embedding_func: Optional[
+            Union[EmbeddingType, List[EmbeddingType]]
+        ] = self._from_list(embedding_function)
         self.builtin_func: Optional[
             Union[BaseMilvusBuiltInFunction, List[BaseMilvusBuiltInFunction]]
         ] = self._from_list(builtin_function)
@@ -1242,14 +1242,14 @@ class Milvus(VectorStore):
         insert_list: list[dict] = []
 
         for vector_field_embeddings in embeddings:
-            assert len(texts) == len(vector_field_embeddings), (
-                "Mismatched lengths of texts and embeddings."
-            )
+            assert len(texts) == len(
+                vector_field_embeddings
+            ), "Mismatched lengths of texts and embeddings."
 
         if metadatas is not None:
-            assert len(texts) == len(metadatas), (
-                "Mismatched lengths of texts and metadatas."
-            )
+            assert len(texts) == len(
+                metadatas
+            ), "Mismatched lengths of texts and metadatas."
 
         for i, text in zip(range(len(texts)), texts):
             entity_dict = {}
@@ -1326,13 +1326,13 @@ class Milvus(VectorStore):
             )
             self.auto_id = True
         elif not self.auto_id and ids:  # Check ids
-            assert len(set(ids)) == len(texts), (
-                "Different lengths of texts and unique ids are provided."
-            )
+            assert len(set(ids)) == len(
+                texts
+            ), "Different lengths of texts and unique ids are provided."
             assert all(isinstance(x, str) for x in ids), "All ids should be strings."
-            assert all(len(x.encode()) <= 65_535 for x in ids), (
-                "Each id should be a string less than 65535 bytes."
-            )
+            assert all(
+                len(x.encode()) <= 65_535 for x in ids
+            ), "Each id should be a string less than 65535 bytes."
 
         elif self.auto_id and ids:
             logger.warning(
@@ -1424,7 +1424,8 @@ class Milvus(VectorStore):
             batch_size (int, optional): Batch size to use for insertion.
                 Defaults to 1000.
             ids (Optional[List[str]]): List of text ids. The length of each item
-                should be less than 65535 bytes. Required and work when auto_id is False.
+                should be less than 65535 bytes. Required and work when auto_id is
+                False.
 
         Raises:
             MilvusException: Failure to add texts and embeddings
@@ -2096,9 +2097,9 @@ class Milvus(VectorStore):
                 )
             expr = f"{self._primary_field} in {ids}"
         else:
-            assert isinstance(expr, str), (
-                "Either ids list or expr string must be provided."
-            )
+            assert isinstance(
+                expr, str
+            ), "Either ids list or expr string must be provided."
         try:
             self.client.delete(self.collection_name, filter=expr, **kwargs)
             return True
@@ -2301,9 +2302,9 @@ class Milvus(VectorStore):
         if not ids:
             self.add_documents(documents=documents, **kwargs)
         else:
-            assert len(set(ids)) == len(documents), (
-                "Different lengths of documents and unique ids are provided."
-            )
+            assert len(set(ids)) == len(
+                documents
+            ), "Different lengths of documents and unique ids are provided."
 
         embeddings_functions: List[EmbeddingType] = self._as_list(self.embedding_func)
         embeddings: List = []
@@ -2473,7 +2474,8 @@ class Milvus(VectorStore):
             batch_size (int, optional): Batch size to use for insertion.
                 Defaults to 1000.
             ids (Optional[List[str]]): List of text ids. The length of each item
-                should be less than 65535 bytes. Required and work when auto_id is False.
+                should be less than 65535 bytes. Required and work when auto_id
+                is False.
 
         Raises:
             MilvusException: Failure to add texts
@@ -2490,9 +2492,9 @@ class Milvus(VectorStore):
             )
             self.auto_id = True
         elif not self.auto_id and ids:  # Check ids
-            assert len(set(ids)) == len(texts), (
-                "Different lengths of texts and unique ids are provided."
-            )
+            assert len(set(ids)) == len(
+                texts
+            ), "Different lengths of texts and unique ids are provided."
 
         elif self.auto_id and ids:
             logger.warning(
@@ -2564,7 +2566,8 @@ class Milvus(VectorStore):
             batch_size (int, optional): Batch size to use for insertion.
                 Defaults to 1000.
             ids (Optional[List[str]]): List of text ids. The length of each item
-                should be less than 65535 bytes. Required and work when auto_id is False.
+                should be less than 65535 bytes. Required and work when auto_id is
+                False.
 
         Raises:
             MilvusException: Failure to add texts and embeddings
@@ -3124,9 +3127,9 @@ class Milvus(VectorStore):
                 )
             expr = f"{self._primary_field} in {ids}"
         else:
-            assert isinstance(expr, str), (
-                "Either ids list or expr string must be provided."
-            )
+            assert isinstance(
+                expr, str
+            ), "Either ids list or expr string must be provided."
         try:
             await self.aclient.delete(self.collection_name, filter=expr, **kwargs)
             return True
@@ -3276,9 +3279,9 @@ class Milvus(VectorStore):
             await self.aadd_documents(documents=documents, **kwargs)
             return
 
-        assert len(set(ids)) == len(documents), (
-            "Different lengths of documents and unique ids are provided."
-        )
+        assert len(set(ids)) == len(
+            documents
+        ), "Different lengths of documents and unique ids are provided."
 
         embeddings_functions: List[EmbeddingType] = self._as_list(self.embedding_func)
         embeddings: List = []
@@ -3332,7 +3335,7 @@ class Milvus(VectorStore):
         Args:
             expr (str): A filtering expression (e.g., `"city == 'Seoul'"`).
             fields (Optional[List[str]]): List of fields to retrieve.
-                                          If None, retrieves all available fields.
+                If `None`, retrieves all available fields.
             limit (int): Maximum number of results to return.
 
         Returns:
