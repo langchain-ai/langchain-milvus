@@ -83,3 +83,65 @@ class BM25BuiltInFunction(BaseMilvusBuiltInFunction):
         if self.analyzer_params is not None:
             field_schema_kwargs["analyzer_params"] = self.analyzer_params
         return field_schema_kwargs
+
+
+class TextEmbeddingBuiltInFunction(BaseMilvusBuiltInFunction):
+    """
+    Milvus Text Embedding built-in function (Data In Data Out).
+
+    This function allows Milvus to automatically generate embeddings from text
+    by calling external embedding service providers (OpenAI, Bedrock, Vertex AI, etc.).
+
+    See:
+    https://milvus.io/docs/embedding-function-overview.md
+    """
+
+    def __init__(
+        self,
+        *,
+        input_field_names: Union[str, List[str]],
+        output_field_names: Union[str, List[str]],
+        dim: int,
+        params: Dict[str, Any],
+        function_name: Optional[str] = None,
+    ):
+        """
+        Args:
+            input_field_names (Union[str, List[str]]): The name(s) of the
+                input field(s) containing text data.
+            output_field_names (Union[str, List[str]]): The name(s) of the
+                output field(s) where embeddings will be stored.
+            dim (int): The dimension of the output embeddings. Required
+                because langchain needs to know the vector dimension upfront
+                when the embedding is generated on the server side.
+            params (Dict[str, Any]): Parameters for the embedding function.
+                This dict is passed through to Milvus Function. Includes:
+                - "provider": embedding service provider
+                  (e.g., "openai", "dashscope")
+                - "model_name": model name
+                  (e.g., "text-embedding-3-small")
+                - "credential": optional credential label from milvus.yaml
+                - Other provider-specific parameters
+                  (e.g., "dim", "user", "region", "url")
+                Examples:
+                    {"provider": "openai",
+                     "model_name": "text-embedding-3-small"}
+                    {"provider": "dashscope",
+                     "model_name": "text-embedding-v3",
+                     "credential": "apikey1"}
+            function_name (Optional[str]): The name of the function.
+                Default is None, which means a random name will be generated.
+        """
+        super().__init__()
+        if not function_name:
+            function_name = f"text_embedding_{str(uuid.uuid4())[:8]}"
+
+        self._function = Function(
+            name=function_name,
+            input_field_names=input_field_names,
+            output_field_names=output_field_names,
+            function_type=FunctionType.TEXTEMBEDDING,
+            params=params,
+        )
+        self.dim = dim
+        self.params = params

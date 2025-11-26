@@ -7,6 +7,7 @@ EXPECTED_ALL = [
     "ZillizCloudPipelineRetriever",
     "BaseMilvusBuiltInFunction",
     "BM25BuiltInFunction",
+    "TextEmbeddingBuiltInFunction",
 ]
 
 
