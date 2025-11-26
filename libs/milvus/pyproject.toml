@@ -79,7 +79,7 @@ onnxruntime = "^1.19.2"
 ruff = "^0.1.5"
 
 [tool.poetry.group.typing.dependencies]
-mypy = "^0.991"
+mypy = "^1.11"
 types-requests = "^2"
 simsimd = "^5.0.0"
 langchain-core = { git = "https://github.com/langchain-ai/langchain.git", subdirectory = "libs/core" }
