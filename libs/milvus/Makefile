@@ -7,8 +7,14 @@ all: help
 TEST_FILE ?= tests/unit_tests/
 integration_test integration_tests: TEST_FILE=tests/integration_tests/
 
-test tests integration_test integration_tests:
+test tests:
 	poetry run pytest $(TEST_FILE)
+
+integration_test integration_tests:
+	poetry run pytest -m "not requires_apikey" $(TEST_FILE)
+
+integration_test_full:
+	poetry run pytest tests/integration_tests/
 
 test_watch:
 	poetry run ptw --snapshot-update --now . -- -vv $(TEST_FILE)

@@ -34,7 +34,11 @@ from pymilvus import (
 )
 from pymilvus.orm.types import infer_dtype_bydata  # type: ignore
 
-from langchain_milvus.function import BaseMilvusBuiltInFunction, BM25BuiltInFunction
+from langchain_milvus.function import (
+    BaseMilvusBuiltInFunction,
+    BM25BuiltInFunction,
+    TextEmbeddingBuiltInFunction,
+)
 from langchain_milvus.utils.constant import PRIMARY_FIELD, TEXT_FIELD, VECTOR_FIELD
 from langchain_milvus.utils.sparse import BaseSparseEmbedding
 
@@ -972,6 +976,13 @@ class Milvus(VectorStore):
                     datatype=DataType.SPARSE_FLOAT_VECTOR,
                     is_function_output=True,
                 )
+            elif isinstance(builtin_function, TextEmbeddingBuiltInFunction):
+                schema.add_field(
+                    field_name=vector_field,
+                    datatype=DataType.FLOAT_VECTOR,
+                    dim=builtin_function.dim,
+                    is_function_output=True,
+                )
             else:
                 raise ValueError(
                     "Unsupported embedding function type: "
@@ -1119,7 +1130,7 @@ class Milvus(VectorStore):
                     )
                     raise e
 
-        # Create indexes for built-in function fields (like BM25)
+        # Create indexes for built-in function fields (like BM25, TextEmbedding)
         for vector_field, builtin_function in zip(
             self._vector_fields_from_function, self._as_list(self.builtin_func)
         ):
@@ -1129,6 +1140,13 @@ class Milvus(VectorStore):
                         if builtin_function.type == FunctionType.BM25:
                             index_params_dict = {
                                 "metric_type": "BM25",
+                                "index_type": "AUTOINDEX",
+                                "params": {},
+                            }
+                        elif builtin_function.type == FunctionType.TEXTEMBEDDING:
+                            # For TextEmbedding, use COSINE metric as default
+                            index_params_dict = {
+                                "metric_type": "COSINE",
                                 "index_type": "AUTOINDEX",
                                 "params": {},
                             }
