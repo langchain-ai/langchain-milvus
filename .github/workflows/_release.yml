@@ -156,10 +156,34 @@ jobs:
         run: make tests
         working-directory: ${{ inputs.working-directory }}
 
-      # TODO: keep this the same with that in _test.yml
-      #      - name: Run integration tests
-      #        run: make integration_tests
-      #        working-directory: ${{ inputs.working-directory }}
+      - name: Setup Milvus with OpenAI for full integration tests
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          mkdir -p milvus_temp
+          cd milvus_temp
+          wget https://raw.githubusercontent.com/milvus-io/milvus/master/scripts/standalone_embed.sh
+          
+          # Setup Milvus with OpenAI credentials
+          python3 $GITHUB_WORKSPACE/.github/scripts/setup_milvus_with_apikey.py standalone_embed.sh
+          
+          bash standalone_embed.sh start
+          cd ..
+          sleep 5
+          echo "Milvus server with OpenAI API key configured!"
+
+      - name: Run full integration tests (including API key tests)
+        run: make integration_test_full
+        working-directory: ${{ inputs.working-directory }}
+
+      - name: Stop and cleanup Milvus
+        if: always()
+        run: |
+          cd milvus_temp
+          bash standalone_embed.sh stop
+          cd ..
+          sudo rm -rf milvus_temp
+          echo "Milvus server stopped and cleaned up!"
 
       - name: Get minimum versions
         working-directory: ${{ inputs.working-directory }}
