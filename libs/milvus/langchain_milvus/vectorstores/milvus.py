@@ -35,7 +35,11 @@ from pymilvus import (
 )
 from pymilvus.orm.types import infer_dtype_bydata  # type: ignore
 
-from langchain_milvus.function import BaseMilvusBuiltInFunction, BM25BuiltInFunction
+from langchain_milvus.function import (
+    BaseMilvusBuiltInFunction,
+    BM25BuiltInFunction,
+    TextEmbeddingBuiltInFunction,
+)
 from langchain_milvus.utils.constant import PRIMARY_FIELD, TEXT_FIELD, VECTOR_FIELD
 from langchain_milvus.utils.sparse import BaseSparseEmbedding
 
@@ -1011,6 +1015,13 @@ class Milvus(VectorStore):
                     datatype=DataType.SPARSE_FLOAT_VECTOR,
                     is_function_output=True,
                 )
+            elif isinstance(builtin_function, TextEmbeddingBuiltInFunction):
+                schema.add_field(
+                    field_name=vector_field,
+                    datatype=DataType.FLOAT_VECTOR,
+                    dim=builtin_function.dim,
+                    is_function_output=True,
+                )
             else:
                 raise ValueError(
                     "Unsupported embedding function type: "
@@ -1158,7 +1169,7 @@ class Milvus(VectorStore):
                     )
                     raise e
 
-        # Create indexes for built-in function fields (like BM25)
+        # Create indexes for built-in function fields (like BM25, TextEmbedding)
         for vector_field, builtin_function in zip(
             self._vector_fields_from_function, self._as_list(self.builtin_func)
         ):
@@ -1168,6 +1179,13 @@ class Milvus(VectorStore):
                         if builtin_function.type == FunctionType.BM25:
                             index_params_dict = {
                                 "metric_type": "BM25",
+                                "index_type": "AUTOINDEX",
+                                "params": {},
+                            }
+                        elif builtin_function.type == FunctionType.TEXTEMBEDDING:
+                            # For TextEmbedding, use COSINE metric as default
+                            index_params_dict = {
+                                "metric_type": "COSINE",
                                 "index_type": "AUTOINDEX",
                                 "params": {},
                             }
@@ -1272,8 +1290,8 @@ class Milvus(VectorStore):
             metadatas: Optional metadata for each text
             ids: Optional IDs for each text
             force_ids: If force_ids, when auto_id is True and ids is not None,
-             it will return a list containing the customized ids, otherwise,
-             it will not contain the customized ids.
+                it will return a list containing the customized ids, otherwise,
+                it will not contain the customized ids.
 
         Returns:
             List of dictionaries ready for insertion
@@ -1341,12 +1359,14 @@ class Milvus(VectorStore):
                 that they all fit in memory.
             metadatas (Optional[List[dict]]): Metadata dicts attached to each of
                 the texts. Defaults to None.
-            should be less than 65535 bytes. Required and work when auto_id is False.
             timeout (Optional[float]): Timeout for each batch insert. Defaults
                 to None.
             batch_size (int, optional): Batch size to use for insertion.
                 Defaults to 1000.
             ids (Optional[List[str]]): List of text ids. The length of each item
+                should be less than 65535 bytes.
+
+                Required and work when `auto_id` is `False`.
 
         Raises:
             MilvusException: Failure to add texts
@@ -1456,12 +1476,13 @@ class Milvus(VectorStore):
                 or list of vectors for each text (in case of multi-vector)
             metadatas (Optional[List[dict]]): Metadata dicts attached to each of
                 the texts. Defaults to None.
-            should be less than 65535 bytes. Required and work when auto_id is False.
             timeout (Optional[float]): Timeout for each batch insert. Defaults
                 to None.
             batch_size (int, optional): Batch size to use for insertion.
                 Defaults to 1000.
             ids (Optional[List[str]]): List of text ids. The length of each item
+                should be less than 65535 bytes. Required and work when auto_id is
+                False.
 
         Raises:
             MilvusException: Failure to add texts and embeddings
@@ -1562,7 +1583,7 @@ class Milvus(VectorStore):
             else:
                 log_entity[k] = v
         logger.error(
-            "Failed to %s batch starting at entity: %s/%s. " "First entity data: %s",
+            "Failed to %s batch starting at entity: %s/%s. First entity data: %s",
             operation_name,
             batch_index + 1,
             total_count,
@@ -1809,7 +1830,7 @@ class Milvus(VectorStore):
             query (str): The text being searched.
             k (int, optional): The amount of results to return. Defaults to 4.
             param (dict | list[dict], optional): The search params for the specified
-            index. Defaults to None.
+                index. Defaults to None.
             expr (str, optional): Filtering expression. Defaults to None.
             timeout (float, optional): How long to wait before timeout error.
                 Defaults to None.
@@ -2107,8 +2128,7 @@ class Milvus(VectorStore):
             return _map_ip_to_similarity
         else:
             raise ValueError(
-                "No supported normalization function"
-                f" for metric type: {metric_type}."
+                f"No supported normalization function for metric type: {metric_type}."
             )
 
     def delete(
@@ -2130,7 +2150,7 @@ class Milvus(VectorStore):
         if isinstance(ids, list) and len(ids) > 0:
             if expr is not None:
                 logger.warning(
-                    "Both ids and expr are provided. " "Ignore expr and delete by ids."
+                    "Both ids and expr are provided. Ignore expr and delete by ids."
                 )
             expr = f"{self._primary_field} in {ids}"
         else:
@@ -2167,8 +2187,7 @@ class Milvus(VectorStore):
                     conn.schema_cache.pop(self.collection_name, None)
             except Exception as e:
                 logger.warning(
-                    f"Failed to clear sync schema cache for "
-                    f"{self.collection_name}: {e}"
+                    f"Failed to clear sync schema cache for {self.collection_name}: {e}"
                 )
 
             # Clear schema cache from async client
@@ -2209,30 +2228,24 @@ class Milvus(VectorStore):
         """Create a Milvus collection, indexes it with HNSW, and insert data.
 
         Args:
-            texts (List[str]): Text data.
-            embedding (Optional[Union[Embeddings, BaseSparseEmbedding]]): Embedding
-                function.
-            metadatas (Optional[List[dict]]): Metadata for each text if it exists.
-                Defaults to None.
-            collection_name (str, optional): Collection name to use. Defaults to
-                "LangChainCollection".
-            connection_args (dict[str, Any], optional): Connection args to use. Defaults
-                to DEFAULT_MILVUS_CONNECTION.
-            consistency_level (str, optional): Which consistency level to use. Defaults
-                to "Session".
-            index_params (Optional[dict], optional): Which index_params to use. Defaults
-                to None.
-            search_params (Optional[dict], optional): Which search params to use.
-                Defaults to None.
-            drop_old (Optional[bool], optional): Whether to drop the collection with
-                that name if it exists. Defaults to False.
-            ids (Optional[List[str]]): List of text ids. Defaults to None.
-            auto_id (bool): Whether to enable auto id for primary key. Defaults to
-                False. If False, you need to provide text ids (string less than 65535
-                bytes). If True, Milvus will generate unique integers as primary keys.
-            builtin_function (Optional[Union[BaseMilvusBuiltInFunction,
-                List[BaseMilvusBuiltInFunction]]]):
-                Built-in function to use. Defaults to None.
+            texts: Text data.
+            embedding: Embedding function.
+            metadatas: Metadata for each text if it exists.
+            collection_name: Collection name to use.
+            connection_args: Connection args to use. Defaults to
+                `DEFAULT_MILVUS_CONNECTION`.
+            consistency_level: Which consistency level to use.
+            index_params: Which `index_params` to use.
+            search_params: Which search params to use.
+            drop_old: Whether to drop the collection with that name if it exists.
+            ids: List of text ids.
+            auto_id: Whether to enable auto id for primary key.
+
+                If `False`, you need to provide text ids (string less than `65535`
+                bytes).
+
+                If `True`, Milvus will generate unique integers as primary keys.
+            builtin_function: Built-in function to use.
             **kwargs: Other parameters in Milvus Collection.
         Returns:
             Milvus: Milvus Vector Store
@@ -2240,7 +2253,7 @@ class Milvus(VectorStore):
         if isinstance(ids, list) and len(ids) > 0:
             if auto_id:
                 logger.warning(
-                    "Both ids and auto_id are provided. " "Ignore auto_id and use ids."
+                    "Both ids and auto_id are provided. Ignore auto_id and use ids."
                 )
             auto_id = False
         else:
@@ -2522,12 +2535,13 @@ class Milvus(VectorStore):
                 that they all fit in memory.
             metadatas (Optional[List[dict]]): Metadata dicts attached to each of
                 the texts. Defaults to None.
-            should be less than 65535 bytes. Required and work when auto_id is False.
             timeout (Optional[float]): Timeout for each batch insert. Defaults
                 to None.
             batch_size (int, optional): Batch size to use for insertion.
                 Defaults to 1000.
             ids (Optional[List[str]]): List of text ids. The length of each item
+                should be less than 65535 bytes. Required and work when auto_id
+                is False.
 
         Raises:
             MilvusException: Failure to add texts
@@ -2613,12 +2627,13 @@ class Milvus(VectorStore):
                 or list of vectors for each text (in case of multi-vector)
             metadatas (Optional[List[dict]]): Metadata dicts attached to each of
                 the texts. Defaults to None.
-            should be less than 65535 bytes. Required and work when auto_id is False.
             timeout (Optional[float]): Timeout for each batch insert. Defaults
                 to None.
             batch_size (int, optional): Batch size to use for insertion.
                 Defaults to 1000.
             ids (Optional[List[str]]): List of text ids. The length of each item
+                should be less than 65535 bytes. Required and work when auto_id is
+                False.
 
         Raises:
             MilvusException: Failure to add texts and embeddings
@@ -2920,7 +2935,7 @@ class Milvus(VectorStore):
             query (str): The text being searched.
             k (int, optional): The amount of results to return. Defaults to 4.
             param (dict | list[dict], optional): The search params for the specified
-            index. Defaults to None.
+                index. Defaults to None.
             expr (str, optional): Filtering expression. Defaults to None.
             timeout (float, optional): How long to wait before timeout error.
                 Defaults to None.
@@ -3174,7 +3189,7 @@ class Milvus(VectorStore):
         if isinstance(ids, list) and len(ids) > 0:
             if expr is not None:
                 logger.warning(
-                    "Both ids and expr are provided. " "Ignore expr and delete by ids."
+                    "Both ids and expr are provided. Ignore expr and delete by ids."
                 )
             expr = f"{self._primary_field} in {ids}"
         else:
@@ -3214,30 +3229,24 @@ class Milvus(VectorStore):
         asynchronously.
 
         Args:
-            texts (List[str]): Text data.
-            embedding (Optional[Union[Embeddings, BaseSparseEmbedding]]): Embedding
-                function.
-            metadatas (Optional[List[dict]]): Metadata for each text if it exists.
-                Defaults to None.
-            collection_name (str, optional): Collection name to use. Defaults to
-                "LangChainCollection".
-            connection_args (dict[str, Any], optional): Connection args to use. Defaults
-                to DEFAULT_MILVUS_CONNECTION.
-            consistency_level (str, optional): Which consistency level to use. Defaults
-                to "Session".
-            index_params (Optional[dict], optional): Which index_params to use. Defaults
-                to None.
-            search_params (Optional[dict], optional): Which search params to use.
-                Defaults to None.
-            drop_old (Optional[bool], optional): Whether to drop the collection with
-                that name if it exists. Defaults to False.
-            ids (Optional[List[str]]): List of text ids. Defaults to None.
-            auto_id (bool): Whether to enable auto id for primary key. Defaults to
-                False. If False, you need to provide text ids (string less than 65535
-                bytes). If True, Milvus will generate unique integers as primary keys.
-            builtin_function (Optional[Union[BaseMilvusBuiltInFunction,
-                List[BaseMilvusBuiltInFunction]]]):
-                Built-in function to use. Defaults to None.
+            texts: Text data.
+            embedding: Embedding function.
+            metadatas: Metadata for each text if it exists.
+            collection_name: Collection name to use.
+            connection_args: Connection args to use. Defaults to
+                `DEFAULT_MILVUS_CONNECTION`.
+            consistency_level: Which consistency level to use.
+            index_params: Which `index_params` to use.
+            search_params: Which search params to use.
+            drop_old: Whether to drop the collection with that name if it exists.
+            ids: List of text ids.
+            auto_id: Whether to enable auto id for primary key.
+
+                If `False`, you need to provide text ids (string less than `65535`
+                bytes).
+
+                If `True`, Milvus will generate unique integers as primary keys.
+            builtin_function: Built-in function to use.
             **kwargs: Other parameters in Milvus Collection.
         Returns:
             Milvus: Milvus Vector Store
@@ -3245,7 +3254,7 @@ class Milvus(VectorStore):
         if isinstance(ids, list) and len(ids) > 0:
             if auto_id:
                 logger.warning(
-                    "Both ids and auto_id are provided. " "Ignore auto_id and use ids."
+                    "Both ids and auto_id are provided. Ignore auto_id and use ids."
                 )
             auto_id = False
         else:
@@ -3392,7 +3401,7 @@ class Milvus(VectorStore):
         Args:
             expr (str): A filtering expression (e.g., `"city == 'Seoul'"`).
             fields (Optional[List[str]]): List of fields to retrieve.
-                                          If None, retrieves all available fields.
+                If `None`, retrieves all available fields.
             limit (int): Maximum number of results to return.
 
         Returns:

@@ -9,7 +9,7 @@ from langchain_core.retrievers import BaseRetriever
 class ZillizCloudPipelineRetriever(BaseRetriever):
     """`Zilliz Cloud Pipeline` retriever.
 
-    Parameters:
+    Attributes:
         pipeline_ids: A dictionary of pipeline ids.
             Valid keys: "ingestion", "search", "deletion".
         token: Zilliz Cloud's token. Defaults to "".
@@ -18,7 +18,9 @@ class ZillizCloudPipelineRetriever(BaseRetriever):
     """
 
     pipeline_ids: Dict
+
     token: str = ""
+
     cloud_region: str = "gcp-us-west1"
 
     def _get_relevant_documents(

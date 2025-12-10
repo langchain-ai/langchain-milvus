@@ -12,7 +12,7 @@ on:
       working-directory:
         required: true
         type: string
-        default: 'libs/milvus'
+        default: "libs/milvus"
 
 env:
   PYTHON_VERSION: "3.11"
@@ -70,8 +70,7 @@ jobs:
   test-pypi-publish:
     needs:
       - build
-    uses:
-      ./.github/workflows/_test_release.yml
+    uses: ./.github/workflows/_test_release.yml
     permissions: write-all
     with:
       working-directory: ${{ inputs.working-directory }}
@@ -112,7 +111,7 @@ jobs:
           PKG_NAME: ${{ needs.build.outputs.pkg-name }}
           VERSION: ${{ needs.build.outputs.version }}
         # Here we use:
-        # - The default regular PyPI index as the *primary* index, meaning 
+        # - The default regular PyPI index as the *primary* index, meaning
         #   that it takes priority (https://pypi.org/simple)
         # - The test PyPI index as an extra index, so that any dependencies that
         #   are not found on test PyPI can be resolved and installed anyway.
@@ -157,10 +156,34 @@ jobs:
         run: make tests
         working-directory: ${{ inputs.working-directory }}
 
-# TODO: keep this the same with that in _test.yml
-#      - name: Run integration tests
-#        run: make integration_tests
-#        working-directory: ${{ inputs.working-directory }}
+      - name: Setup Milvus with OpenAI for full integration tests
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          mkdir -p milvus_temp
+          cd milvus_temp
+          wget https://raw.githubusercontent.com/milvus-io/milvus/master/scripts/standalone_embed.sh
+          
+          # Setup Milvus with OpenAI credentials
+          python3 $GITHUB_WORKSPACE/.github/scripts/setup_milvus_with_apikey.py standalone_embed.sh
+          
+          bash standalone_embed.sh start
+          cd ..
+          sleep 5
+          echo "Milvus server with OpenAI API key configured!"
+
+      - name: Run full integration tests (including API key tests)
+        run: make integration_test_full
+        working-directory: ${{ inputs.working-directory }}
+
+      - name: Stop and cleanup Milvus
+        if: always()
+        run: |
+          cd milvus_temp
+          bash standalone_embed.sh stop
+          cd ..
+          sudo rm -rf milvus_temp
+          echo "Milvus server stopped and cleaned up!"
 
       - name: Get minimum versions
         working-directory: ${{ inputs.working-directory }}
@@ -263,4 +286,5 @@ jobs:
           draft: false
           generateReleaseNotes: true
           tag: ${{ inputs.working-directory }}/v${{ needs.build.outputs.version }}
+          name: ${{ needs.build.outputs.pkg-name }}==${{ needs.build.outputs.version }}
           commit: main

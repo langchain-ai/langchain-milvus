@@ -21,26 +21,35 @@ class MilvusCollectionHybridSearchRetriever(BaseRetriever):
 
     collection: Collection
     """Milvus Collection object."""
+
     rerank: BaseRanker
     """Milvus ranker object. Such as WeightedRanker or RRFRanker."""
+
     anns_fields: List[str]
     """The names of vector fields that are used for ANNS search."""
+
     field_embeddings: List[Union[Embeddings, BaseSparseEmbedding]]
     """The embedding functions of each vector fields, 
     which can be either Embeddings or BaseSparseEmbedding."""
+
     field_search_params: Optional[List[Dict]] = None
     """The search parameters of each vector fields. 
     If not specified, the default search parameters will be used."""
+
     field_limits: Optional[List[int]] = None
     """Limit number of results for each ANNS field. 
     If not specified, the default top_k will be used."""
+
     field_exprs: Optional[List[Optional[str]]] = None
     """The boolean expression for filtering the search results."""
+
     top_k: int = 4
     """Final top-K number of documents to retrieve."""
+
     text_field: str = "text"
     """The text field name, 
     which will be used as the `page_content` of a `Document` object."""
+
     output_fields: Optional[List[str]] = None
     """Final output fields of the documents. 
     If not specified, all fields except the vector fields will be used as output fields,
