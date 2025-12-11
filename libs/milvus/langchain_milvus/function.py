@@ -39,8 +39,32 @@ class BM25BuiltInFunction(BaseMilvusBuiltInFunction):
     """
     Milvus BM25 built-in function.
 
+    Supports both single-language and multi-language analyzers.
+
     See:
-    https://milvus.io/docs/full-text-search.md
+    - https://milvus.io/docs/full-text-search.md
+    - https://milvus.io/docs/multi-language-analyzers.md
+
+    Example for single-language analyzer:
+        BM25BuiltInFunction(
+            analyzer_params={"type": "english"}
+        )
+
+    Example for multi-language analyzers:
+        BM25BuiltInFunction(
+            multi_analyzer_params={
+                "analyzers": {
+                    "english": {"type": "english"},
+                    "chinese": {"type": "chinese"},
+                    "default": {"tokenizer": "icu"}
+                },
+                "by_field": "language",
+                "alias": {
+                    "cn": "chinese",
+                    "en": "english"
+                }
+            }
+        )
     """
 
     def __init__(
@@ -49,6 +73,7 @@ class BM25BuiltInFunction(BaseMilvusBuiltInFunction):
         input_field_names: str = TEXT_FIELD,
         output_field_names: str = SPARSE_VECTOR_FIELD,
         analyzer_params: Optional[Dict[Any, Any]] = None,
+        multi_analyzer_params: Optional[Dict[Any, Any]] = None,
         enable_match: bool = False,
         function_name: Optional[str] = None,
     ):
@@ -59,11 +84,35 @@ class BM25BuiltInFunction(BaseMilvusBuiltInFunction):
             analyzer_params (Optional[Dict[Any, Any]]): The parameters for the analyzer.
                 Default is None. See:
                 https://milvus.io/docs/analyzer-overview.md#Analyzer-Overview
+            multi_analyzer_params (Optional[Dict[Any, Any]]): The parameters for
+                multi-language analyzers. Default is None. See:
+                https://milvus.io/docs/multi-language-analyzers.md
+                This parameter is mutually exclusive with analyzer_params.
+                Example:
+                    {
+                        "analyzers": {
+                            "english": {"type": "english"},
+                            "chinese": {"type": "chinese"},
+                            "default": {"tokenizer": "icu"}
+                        },
+                        "by_field": "language",
+                        "alias": {
+                            "cn": "chinese",
+                            "en": "english"
+                        }
+                    }
             enable_match (bool): Whether to enable match.
             function_name (Optional[str]): The name of the function. Default is None,
                 which means a random name will be generated.
         """
         super().__init__()
+        if analyzer_params is not None and multi_analyzer_params is not None:
+            raise ValueError(
+                "analyzer_params and multi_analyzer_params cannot be set "
+                "at the same time. Please use either analyzer_params for "
+                "single-language analyzer or multi_analyzer_params for "
+                "multi-language analyzers."
+            )
         if not function_name:
             function_name = f"bm25_function_{str(uuid.uuid4())[:8]}"
         self._function = Function(
@@ -73,6 +122,7 @@ class BM25BuiltInFunction(BaseMilvusBuiltInFunction):
             function_type=FunctionType.BM25,
         )
         self.analyzer_params: Optional[Dict[Any, Any]] = analyzer_params
+        self.multi_analyzer_params: Optional[Dict[Any, Any]] = multi_analyzer_params
         self.enable_match = enable_match
 
     def get_input_field_schema_kwargs(self) -> dict:
@@ -80,7 +130,9 @@ class BM25BuiltInFunction(BaseMilvusBuiltInFunction):
             "enable_analyzer": True,
             "enable_match": self.enable_match,
         }
-        if self.analyzer_params is not None:
+        if self.multi_analyzer_params is not None:
+            field_schema_kwargs["multi_analyzer_params"] = self.multi_analyzer_params
+        elif self.analyzer_params is not None:
             field_schema_kwargs["analyzer_params"] = self.analyzer_params
         return field_schema_kwargs
 
