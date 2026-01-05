@@ -4,6 +4,7 @@ from typing import Any, ClassVar, Generator, List, Optional
 
 import pytest
 from langchain_core.documents import Document
+from pymilvus import Function, FunctionType
 
 from langchain_milvus.function import BM25BuiltInFunction
 from langchain_milvus.utils.sparse import BM25SparseEmbedding
@@ -597,18 +598,37 @@ class TestMilvusBaseAsync(ABC):
         )
 
         query = fake_texts[0]
+
+        # Test with weighted reranker favoring first vector field
+        weighted_reranker_1 = Function(
+            name="weighted_ranker_first_async",
+            function_type=FunctionType.RERANK,
+            input_field_names=[],
+            params={
+                "reranker": "weighted",
+                "weights": [1.0, 0.0],  # Count for first embeddings only
+            },
+        )
         output = await docsearch.asimilarity_search(
             query=query,
-            ranker_type="weighted",
-            ranker_params={"weights": [1.0, 0.0]},  # Count for first embeddings only
+            reranker=weighted_reranker_1,
             k=1,
         )
         assert_docs_equal_without_pk(output, [Document(page_content=fake_texts[0])])
 
+        # Test with weighted reranker favoring second vector field
+        weighted_reranker_2 = Function(
+            name="weighted_ranker_second_async",
+            function_type=FunctionType.RERANK,
+            input_field_names=[],
+            params={
+                "reranker": "weighted",
+                "weights": [0.0, 1.0],  # Count for second embeddings only
+            },
+        )
         output = await docsearch.asimilarity_search(
             query=query,
-            ranker_type="weighted",
-            ranker_params={"weights": [0.0, 1.0]},  # Count for second embeddings only
+            reranker=weighted_reranker_2,
             k=1,
         )
         assert_docs_equal_without_pk(output, [Document(page_content=fake_texts[-1])])
