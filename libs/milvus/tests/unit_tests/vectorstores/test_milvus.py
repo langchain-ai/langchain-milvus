@@ -46,3 +46,7 @@ class TestMilvusLite(TestMilvusBase):
     )
     def test_milvus_builtin_bm25_function(self, enable_dynamic_field: bool) -> None:
         return super().test_milvus_builtin_bm25_function(enable_dynamic_field)
+
+    @pytest.mark.skip(reason="Milvus-Lite doesn't support Function as rerank input")
+    def test_milvus_multi_vector_search_with_ranker(self) -> None:
+        return super().test_milvus_multi_vector_search_with_ranker()

@@ -26,11 +26,10 @@ from pymilvus import (
     Collection,
     CollectionSchema,
     DataType,
+    Function,
     FunctionType,
     MilvusClient,
     MilvusException,
-    RRFRanker,
-    WeightedRanker,
 )
 from pymilvus.orm.types import infer_dtype_bydata  # type: ignore
 
@@ -1622,6 +1621,7 @@ class Milvus(VectorStore):
         param: Optional[dict | list[dict]] = None,
         expr: Optional[str] = None,
         fetch_k: Optional[int] = 4,
+        reranker: Optional[Function] = None,
         ranker_type: Optional[Literal["rrf", "weighted"]] = None,
         ranker_params: Optional[dict] = None,
         timeout: Optional[float] = None,
@@ -1642,9 +1642,13 @@ class Milvus(VectorStore):
             expr (str, optional): Filtering expression. Defaults to None.
             fetch_k (int, optional): The amount of pre-fetching results for each query.
                 Defaults to 4.
-            ranker_type (str, optional): The type of ranker to use. Defaults to None.
-            ranker_params (dict, optional): The parameters for the ranker.
-                Defaults to None.
+            reranker (Function, optional): Function object with FunctionType.RERANK.
+                New way to specify reranker. Supports all reranker types:
+                weighted, rrf, boost, decay, model.
+            ranker_type (str, optional): (Deprecated) Use 'reranker' instead.
+                The type of ranker to use. Defaults to None.
+            ranker_params (dict, optional): (Deprecated) Use 'reranker' instead.
+                The parameters for the ranker. Defaults to None.
             timeout (float, optional): How long to wait before timeout error.
                 Defaults to None.
             kwargs: Collection.hybrid_search() keyword arguments.
@@ -1657,10 +1661,37 @@ class Milvus(VectorStore):
             return None
 
         search_requests = []
-        reranker = self._create_ranker(
-            ranker_type=ranker_type,
-            ranker_params=ranker_params or {},
-        )
+        # Handle reranker parameter
+        reranker_obj = None
+
+        if reranker is not None:
+            # New way: use Function object directly
+            assert (
+                reranker.type == FunctionType.RERANK
+            ), f"Expected FunctionType.RERANK, got {reranker.type}"
+            reranker_obj = reranker
+            if ranker_type is not None or ranker_params is not None:
+                warnings.warn(
+                    "Both 'ranker_type' and 'ranker_params' are provided. "
+                    "Will use 'reranker' parameter instead of"
+                    " 'ranker_type' and 'ranker_params'.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+        else:
+            # Old way: use ranker_type and ranker_params (deprecated)
+            warnings.warn(
+                "The 'ranker_type' and 'ranker_params' parameters are deprecated. "
+                "Please use the 'reranker' parameter with a Function object instead. "
+                "See https://milvus.io/docs/weighted-ranker.md and "
+                "https://milvus.io/docs/rrf-ranker.md for more information.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            reranker_obj = self._create_ranker(
+                ranker_type=ranker_type,
+                ranker_params=ranker_params or {},
+            )
         if not param:
             param_list = self._as_list(self.search_params)
         else:
@@ -1698,7 +1729,7 @@ class Milvus(VectorStore):
         col_search_res = self.client.hybrid_search(
             self.collection_name,
             reqs=search_requests,
-            ranker=reranker,
+            ranker=reranker_obj,
             limit=k,
             output_fields=output_fields,
             timeout=self.timeout or timeout,
@@ -2382,8 +2413,25 @@ class Milvus(VectorStore):
         self,
         ranker_type: Optional[Literal["rrf", "weighted"]],
         ranker_params: dict,
-    ) -> Union[WeightedRanker, RRFRanker]:
-        """A Ranker factory method"""
+    ) -> Any:
+        """A Ranker factory method (legacy support)
+
+        Note: WeightedRanker and RRFRanker are imported inside this method
+        for future compatibility. If import fails, users should use Function
+        instead.
+        """
+        # Try to import legacy rankers (for future compatibility)
+        try:
+            from pymilvus import RRFRanker, WeightedRanker
+        except ImportError:
+            raise ImportError(
+                "WeightedRanker and RRFRanker are no longer available. "
+                "Please update pymilvus and langchain-milvus to the latest versions, "
+                "and use the 'reranker' parameter with a Function object instead. "
+                "See https://milvus.io/docs/weighted-ranker.md and "
+                "https://milvus.io/docs/rrf-ranker.md for more information."
+            )
+
         default_weights = [1.0] * len(self._as_list(self._vector_field))
         if not ranker_type:
             return WeightedRanker(*default_weights)
@@ -2399,7 +2447,7 @@ class Milvus(VectorStore):
         else:
             logger.error(
                 "Ranker %s does not exist. "
-                "Please use on of the following rankers: %s, %s",
+                "Please use one of the following rankers: %s, %s",
                 ranker_type,
                 "weighted",
                 "rrf",
@@ -2717,6 +2765,7 @@ class Milvus(VectorStore):
         param: Optional[dict | list[dict]] = None,
         expr: Optional[str] = None,
         fetch_k: Optional[int] = 4,
+        reranker: Optional[Function] = None,
         ranker_type: Optional[Literal["rrf", "weighted"]] = None,
         ranker_params: Optional[dict] = None,
         timeout: Optional[float] = None,
@@ -2738,9 +2787,13 @@ class Milvus(VectorStore):
             expr (str, optional): Filtering expression. Defaults to None.
             fetch_k (int, optional): The amount of pre-fetching results for each query.
                 Defaults to 4.
-            ranker_type (str, optional): The type of ranker to use. Defaults to None.
-            ranker_params (dict, optional): The parameters for the ranker.
-                Defaults to None.
+            reranker (Function, optional): Function object with FunctionType.RERANK.
+                New way to specify reranker. Supports all reranker types:
+                weighted, rrf, boost, decay, model.
+            ranker_type (str, optional): (Deprecated) Use 'reranker' instead.
+                The type of ranker to use. Defaults to None.
+            ranker_params (dict, optional): (Deprecated) Use 'reranker' instead.
+                The parameters for the ranker. Defaults to None.
             timeout (float, optional): How long to wait before timeout error.
                 Defaults to None.
             kwargs: Collection.hybrid_search() keyword arguments.
@@ -2753,10 +2806,29 @@ class Milvus(VectorStore):
             return None
 
         search_requests = []
-        reranker = self._create_ranker(
-            ranker_type=ranker_type,
-            ranker_params=ranker_params or {},
-        )
+        # Handle reranker parameter
+        reranker_obj = None
+
+        if reranker is not None:
+            # New way: use Function object directly
+            assert (
+                reranker.type == FunctionType.RERANK
+            ), f"Expected FunctionType.RERANK, got {reranker.type}"
+            reranker_obj = reranker
+        elif ranker_type is not None:
+            # Old way: use ranker_type and ranker_params (deprecated)
+            warnings.warn(
+                "The 'ranker_type' and 'ranker_params' parameters are deprecated. "
+                "Please use the 'reranker' parameter with a Function object instead. "
+                "See https://milvus.io/docs/weighted-ranker.md and "
+                "https://milvus.io/docs/rrf-ranker.md for more information.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            reranker_obj = self._create_ranker(
+                ranker_type=ranker_type,
+                ranker_params=ranker_params or {},
+            )
         if not param:
             param_list = self._as_list(self.search_params)
         else:
@@ -2794,7 +2866,7 @@ class Milvus(VectorStore):
         col_search_res = await self.aclient.hybrid_search(
             self.collection_name,
             reqs=search_requests,
-            ranker=reranker,
+            ranker=reranker_obj,
             limit=k,
             output_fields=output_fields,
             timeout=self.timeout or timeout,
