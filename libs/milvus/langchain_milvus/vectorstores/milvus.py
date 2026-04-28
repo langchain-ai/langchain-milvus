@@ -31,6 +31,7 @@ from pymilvus import (
     MilvusClient,
     MilvusException,
 )
+from pymilvus.orm.connections import pymilvus_connections
 from pymilvus.orm.types import infer_dtype_bydata  # type: ignore
 
 from langchain_milvus.function import (
@@ -399,6 +400,10 @@ class Milvus(VectorStore):
             self._async_milvus_client = None
 
         self.alias = self.client._using
+
+        # Register the handler in the legacy connections singleton so that
+        # Collection(using=self.alias) can find it.
+        pymilvus_connections._alias_handlers[self.alias] = self.client._get_connection()
 
         self._col_cache: Optional[Collection] = None
         self._cache_key: Optional[str] = None
