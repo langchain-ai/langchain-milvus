@@ -304,6 +304,7 @@ class Milvus(VectorStore):
             "ANNOY": {"metric_type": "L2", "params": {"search_k": 10}},
             "SCANN": {"metric_type": "L2", "params": {"search_k": 10}},
             "AUTOINDEX": {"metric_type": "L2", "params": {}},
+            "DISKANN":  {"metric_type": "L2", "params": {"search_list": 16}},
             "GPU_CAGRA": {
                 "metric_type": "L2",
                 "params": {
