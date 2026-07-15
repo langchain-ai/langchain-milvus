@@ -50,13 +50,13 @@ jobs:
         run: |
           mkdir -p milvus_temp
           cd milvus_temp
-          wget https://raw.githubusercontent.com/milvus-io/milvus/master/scripts/standalone_embed.sh
+          wget https://raw.githubusercontent.com/milvus-io/milvus/v2.6.4/scripts/standalone_embed.sh
           cd ..
 
       - name: Run Milvus
         run: |
           cd milvus_temp
-          bash standalone_embed.sh start
+          timeout 300 bash standalone_embed.sh start
           cd ..
           sleep 5
           echo "\nMilvus server started!"
