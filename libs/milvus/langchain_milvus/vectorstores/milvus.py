@@ -563,39 +563,17 @@ class Milvus(VectorStore):
     @property
     def col(self) -> Optional[Collection]:
         """
-        Lazy-loaded Collection object property with caching.
+        Deprecated: Always returns None.
 
-        Returns the ORM Collection object if the collection exists.
-        Uses cache to avoid repeated network calls and Collection() construction.
+        All operations now use MilvusClient API instead of the ORM Collection.
+        Kept for backward compatibility only.
         """
-        # Generate current cache key
-        current_key = f"{self.collection_name}:{self.alias}"
-
-        # Cache hit - return immediately with zero overhead
-        if self._cache_key == current_key and self._col_cache is not None:
-            return self._col_cache
-
-        # Cache miss - check and create Collection object
-        if self.client.has_collection(self.collection_name):
-            self._col_cache = Collection(self.collection_name, using=self.alias)
-            if self.collection_properties is not None:
-                self._col_cache.set_properties(self.collection_properties)
-            self._cache_key = current_key
-            return self._col_cache
-
-        # Collection doesn't exist - clear cache
-        self._col_cache = None
-        self._cache_key = None
         return None
 
     @col.setter
     def col(self, value: Optional[Collection]) -> None:
-        """Collection setter for backward compatibility. Also updates cache."""
-        self._col_cache = value
-        if value is not None:
-            self._cache_key = f"{self.collection_name}:{self.alias}"
-        else:
-            self._cache_key = None
+        """No-op setter for backward compatibility."""
+        pass
 
     @property
     def embeddings(self) -> Optional[Union[EmbeddingType, List[EmbeddingType]]]:  # type: ignore
@@ -1011,14 +989,25 @@ class Milvus(VectorStore):
 
         return field_params
 
+    # def _extract_fields(self) -> None:
+    #     """
+    #     Grab the existing fields from the Collection.
+    #     """
+    #     if isinstance(self.col, Collection):
+    #         schema = self.col.schema
+    #         for x in schema.fields:
+    #             self.fields.append(x.name)
+
     def _extract_fields(self) -> None:
         """
-        Grab the existing fields from the Collection.
+        Grab the existing fields from the Collection. Edited by Ke Wang
         """
-        if isinstance(self.col, Collection):
-            schema = self.col.schema
-            for x in schema.fields:
-                self.fields.append(x.name)
+        if self.client.has_collection(self.collection_name):
+            collection_info = self.client.describe_collection(self.collection_name)
+            if "fields" in collection_info:
+                for field in collection_info["fields"]:
+                    if "name" in field:
+                        self.fields.append(field["name"])    
 
         # Here is an other way to get the fields through the milvus client,
         # but it is not as efficient as the above method.
@@ -1034,13 +1023,35 @@ class Milvus(VectorStore):
         """
         Return the vector index information if it exists.
         """
-        if not self._is_multi_vector:
-            field_name: str = field_name or self._vector_field  # type: ignore
+        # Edited by Ke Wang begin
 
-        if isinstance(self.col, Collection):
-            for x in self.col.indexes:
-                if x.field_name == field_name:
-                    return x.to_dict()
+        # if not self._is_multi_vector:
+        #     field_name: str = field_name or self._vector_field  # type: ignore
+
+        # if isinstance(self.col, Collection):
+        #     for x in self.col.indexes:
+        #         if x.field_name == field_name:
+        #             return x.to_dict()
+
+        # Edited by Ke Wang end
+
+        if not self._is_multi_vector:
+            field_name: str = field_name or self._vector_field
+
+        if self.client.has_collection(self.collection_name):
+            indexes = self.client.list_indexes(self.collection_name)
+            for index_name in indexes:
+                idx_info = self.client.describe_index(self.collection_name, index_name)
+                if idx_info.get("field_name") == field_name:
+                    return {
+                        "collection": self.collection_name,
+                        "field": field_name,
+                        "index_name": index_name,
+                        "index_param": {
+                            "metric_type": idx_info.get("metric_type"),
+                            "index_type": idx_info.get("index_type"),
+                        },
+                    }
 
         # Here is an other way to get the index through the milvus client,
         # but it is not as efficient as the above method.
@@ -1581,7 +1592,7 @@ class Milvus(VectorStore):
         Returns:
             List[List[dict]]: Milvus search result.
         """
-        if self.col is None:
+        if not self.client.has_collection(self.collection_name):
             logger.debug("No existing collection to search.")
             return None
 
@@ -1656,7 +1667,7 @@ class Milvus(VectorStore):
         Returns:
             List[List[dict]]: Milvus search result.
         """
-        if self.col is None:
+        if not self.client.has_collection(self.collection_name):
             logger.debug("No existing collection to search.")
             return None
 
@@ -1761,7 +1772,7 @@ class Milvus(VectorStore):
         Returns:
             List[Document]: Document results for search.
         """
-        if self.col is None:
+        if not self.client.has_collection(self.collection_name):
             logger.debug("No existing collection to search.")
             return []
         timeout = self.timeout or timeout
@@ -1794,7 +1805,7 @@ class Milvus(VectorStore):
         Returns:
             List[Document]: Document results for search.
         """
-        if self.col is None:
+        if not self.client.has_collection(self.collection_name):
             logger.debug("No existing collection to search.")
             return []
         timeout = self.timeout or timeout
@@ -1831,7 +1842,7 @@ class Milvus(VectorStore):
         Returns:
             List[Tuple[Document, float]]: List of result doc and score.
         """
-        if self.col is None:
+        if not self.client.has_collection(self.collection_name):
             logger.debug("No existing collection to search.")
             return []
 
@@ -1951,7 +1962,7 @@ class Milvus(VectorStore):
         Returns:
             List[Document]: Document results for search.
         """
-        if self.col is None:
+        if not self.client.has_collection(self.collection_name):
             logger.debug("No existing collection to search.")
             return []
 
@@ -2312,7 +2323,7 @@ class Milvus(VectorStore):
             List[int]: List of IDs (Primary Keys)
         """
 
-        if self.col is None:
+        if not self.client.has_collection(self.collection_name):
             logger.debug("No existing collection to get pk.")
             return None
 
@@ -2484,7 +2495,7 @@ class Milvus(VectorStore):
         """
         from pymilvus import MilvusException
 
-        if self.col is None:
+        if not self.client.has_collection(self.collection_name):
             logger.debug("No existing collection to search.")
             return []
 
@@ -2725,7 +2736,7 @@ class Milvus(VectorStore):
         Returns:
             List[List[dict]]: Milvus search result.
         """
-        if self.col is None:
+        if not self.client.has_collection(self.collection_name):
             logger.debug("No existing collection to search.")
             return None
 
@@ -2801,7 +2812,7 @@ class Milvus(VectorStore):
         Returns:
             List[List[dict]]: Milvus search result.
         """
-        if self.col is None:
+        if not self.client.has_collection(self.collection_name):
             logger.debug("No existing collection to search.")
             return None
 
@@ -2898,7 +2909,7 @@ class Milvus(VectorStore):
         Returns:
             List[Document]: Document results for search.
         """
-        if self.col is None:
+        if not self.client.has_collection(self.collection_name):
             logger.debug("No existing collection to search.")
             return []
         timeout = self.timeout or timeout
@@ -2931,7 +2942,7 @@ class Milvus(VectorStore):
         Returns:
             List[Document]: Document results for search.
         """
-        if self.col is None:
+        if not self.client.has_collection(self.collection_name):
             logger.debug("No existing collection to search.")
             return []
         timeout = self.timeout or timeout
@@ -2968,7 +2979,7 @@ class Milvus(VectorStore):
         Returns:
             List[Tuple[Document, float]]: List of result doc and score.
         """
-        if self.col is None:
+        if not self.client.has_collection(self.collection_name):
             logger.debug("No existing collection to search.")
             return []
 
@@ -3090,7 +3101,7 @@ class Milvus(VectorStore):
         Returns:
             List[Document]: Document results for search.
         """
-        if self.col is None:
+        if not self.client.has_collection(self.collection_name):
             logger.debug("No existing collection to search.")
             return []
 
@@ -3325,7 +3336,7 @@ class Milvus(VectorStore):
             List[int]: List of IDs (Primary Keys)
         """
 
-        if self.col is None:
+        if not self.client.has_collection(self.collection_name):
             logger.debug("No existing collection to get pk.")
             return None
 
@@ -3433,7 +3444,7 @@ class Milvus(VectorStore):
         """
         from pymilvus import MilvusException
 
-        if self.col is None:
+        if not self.client.has_collection(self.collection_name):
             logger.debug("No existing collection to search.")
             return []
 
