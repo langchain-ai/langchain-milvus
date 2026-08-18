@@ -1541,14 +1541,14 @@ class Milvus(VectorStore):
 
         # If the collection hasn't been initialized yet, perform all steps to do so
         if not self.client.has_collection(self.collection_name):
-            kwargs = {"embeddings": embeddings, "metadatas": metadatas}
+            init_kwargs: dict = {"embeddings": embeddings, "metadatas": metadatas}
             if self.partition_names:
-                kwargs["partition_names"] = self.partition_names
+                init_kwargs["partition_names"] = self.partition_names
             if self.replica_number:
-                kwargs["replica_number"] = self.replica_number
+                init_kwargs["replica_number"] = self.replica_number
             if self.timeout:
-                kwargs["timeout"] = self.timeout
-            self._init(**kwargs)
+                init_kwargs["timeout"] = self.timeout
+            self._init(**init_kwargs)
 
         insert_list = self._prepare_insert_list(
             texts=texts,
