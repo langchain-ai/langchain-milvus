@@ -66,7 +66,7 @@ syrupy = "^4.0.2"
 pytest-watcher = "^0.3.4"
 pytest-asyncio = "^0.21.1"
 "pymilvus.model" = "^0.3.1"
-nltk = ">=3.9.1,<4.0"
+nltk = ">=3.10.3,<4.0"
 onnxruntime = "^1.19.2"
 langchain-core = ">=1.4.9,<2.0.0"
 
