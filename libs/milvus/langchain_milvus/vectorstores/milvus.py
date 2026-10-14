@@ -2617,6 +2617,10 @@ class Milvus(VectorStore):
             assert len(set(ids)) == len(
                 texts
             ), "Different lengths of texts and unique ids are provided."
+            assert all(isinstance(x, str) for x in ids), "All ids should be strings."
+            assert all(
+                len(x.encode()) <= 65_535 for x in ids
+            ), "Each id should be a string less than 65535 bytes."
 
         elif self.auto_id and ids:
             logger.warning(
