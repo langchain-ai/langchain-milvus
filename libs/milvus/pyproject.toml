@@ -11,9 +11,9 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10,<4.0"
 dependencies = [
-    "pymilvus>=3.0.0,<4.0",
-    "milvus-lite>=3.1.0,<4.0; sys_platform != 'win32'",
-    "langchain-core>=1.4.9,<2.0.0",
+    "pymilvus>=3.0.0",
+    "milvus-lite>=3.1.0; sys_platform != 'win32'",
+    "langchain-core>=1.4.9",
 ]
 
 [project.urls]
