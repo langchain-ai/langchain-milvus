@@ -2399,6 +2399,7 @@ class Milvus(VectorStore):
 
         if not ids:
             self.add_documents(documents=documents, **kwargs)
+            return
         else:
             assert len(set(ids)) == len(
                 documents
