@@ -2316,11 +2316,13 @@ class Milvus(VectorStore):
         return vector_db
 
     def _parse_document(self, data: dict) -> Document:
+        primary_key = data.get(self._primary_field)
         vector_fields: List[str] = self._as_list(self._vector_field)
         for vector_field in vector_fields:
             if vector_field in data:
                 data.pop(vector_field)
         return Document(
+            id=str(primary_key) if primary_key is not None else None,
             page_content=data.pop(self._text_field),
             metadata=data.pop(self._metadata_field) if self._metadata_field else data,
         )
@@ -2560,7 +2562,15 @@ class Milvus(VectorStore):
                 limit=limit,
             )
             return [
-                Document(page_content=result[self._text_field], metadata=result)
+                Document(
+                    id=(
+                        str(result[self._primary_field])
+                        if result.get(self._primary_field) is not None
+                        else None
+                    ),
+                    page_content=result[self._text_field],
+                    metadata=result,
+                )
                 for result in results
             ]
         except MilvusException as e:
@@ -3504,7 +3514,15 @@ class Milvus(VectorStore):
                 limit=limit,
             )
             return [
-                Document(page_content=result[self._text_field], metadata=result)
+                Document(
+                    id=(
+                        str(result[self._primary_field])
+                        if result.get(self._primary_field) is not None
+                        else None
+                    ),
+                    page_content=result[self._text_field],
+                    metadata=result,
+                )
                 for result in results
             ]
         except MilvusException as e:
