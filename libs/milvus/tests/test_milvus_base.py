@@ -259,6 +259,23 @@ class TestMilvusBase(ABC):
         result = docsearch.delete(pks)
         assert result is True
 
+    @pytest.mark.parametrize("ids", [None, []])
+    def test_milvus_upsert_without_ids(self, ids: Optional[List[str]]) -> None:
+        """Upserting without IDs inserts once and returns successfully."""
+        docsearch = self._milvus_from_texts(auto_id=True)
+        document = Document(page_content="upsert without ids")
+
+        result = docsearch.upsert(ids=ids, documents=[document])
+
+        assert result is None
+        rows = docsearch.client.query(
+            collection_name=docsearch.collection_name,
+            filter='text == "upsert without ids"',
+            output_fields=["text"],
+        )
+        assert len(rows) == 1
+        assert rows[0]["text"] == document.page_content
+
     def test_milvus_upsert_entities(self) -> None:
         """Test end to end construction and upsert entities"""
         texts = ["foo", "bar", "baz"]
