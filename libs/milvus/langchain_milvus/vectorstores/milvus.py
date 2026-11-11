@@ -2869,6 +2869,14 @@ class Milvus(VectorStore):
             ), f"Expected FunctionType.RERANK, got {reranker.type}"
             # Function rerankers require Milvus 2.6+ for consistent results.
             reranker_obj = reranker
+            if ranker_type is not None or ranker_params is not None:
+                warnings.warn(
+                    "Both 'ranker_type' and 'ranker_params' are provided. "
+                    "Will use 'reranker' parameter instead of"
+                    " 'ranker_type' and 'ranker_params'.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
         elif ranker_type is not None:
             # Old way: use ranker_type and ranker_params (deprecated)
             warnings.warn(
