@@ -97,6 +97,22 @@ class TestMilvusBase(ABC):
         output = docsearch.similarity_search("foo", k=1)
         assert_docs_equal_without_pk(output, [Document(page_content="foo")])
 
+    def test_milvus_add_texts_with_timeout_new_collection(self) -> None:
+        """Inserting into a not-yet-created collection while a timeout is set
+        must not pass timeout to the client twice (issue #91)."""
+        docsearch = Milvus(
+            FakeEmbeddings(),
+            connection_args={"uri": self.TEST_URI},
+            collection_name="test_timeout_new_collection",
+            drop_old=True,
+            consistency_level="Strong",
+            auto_id=True,
+            timeout=30,
+        )
+        docsearch.add_texts(["foo", "bar"])
+        output = docsearch.similarity_search("foo", k=1)
+        assert len(output) == 1
+
     def test_milvus_vector_search(self) -> None:
         """Test end to end construction and search by vector."""
         docsearch = self._milvus_from_texts()
