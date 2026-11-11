@@ -2545,8 +2545,7 @@ class Milvus(VectorStore):
             return []
 
         # Default to retrieving all fields if none are provided
-        if fields is None:
-            fields = self.fields
+        fields = list(self.fields if fields is None else fields)
 
         # Ensure the text field is included in the output fields
         if self._text_field not in fields:
@@ -3489,8 +3488,7 @@ class Milvus(VectorStore):
             return []
 
         # Default to retrieving all fields if none are provided
-        if fields is None:
-            fields = self.fields
+        fields = list(self.fields if fields is None else fields)
 
         # Ensure the text field is included in the output fields
         if self._text_field not in fields:
